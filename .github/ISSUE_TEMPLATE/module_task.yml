@@ -1,0 +1,55 @@
+name: "Module Task"
+description: "Use this template to track migration, improvements, or new development for a specific module"
+title: "[Module] <Module Name> – <Task Summary>"
+labels: ["module", "todo"]
+body:
+  - type: input
+    id: module
+    attributes:
+      label: Module Name
+      description: Name of the module this issue is about (e.g., db_manager, movement_package)
+      placeholder: "db_manager"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: Is this migration, improvement, or new development?
+      options:
+        - Migration
+        - Needs Improvement
+        - Needs Development
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe what this issue is about, including context from previous build years.
+      placeholder: >
+        Example: "Needs to support asynchronous functionality and contain the correct database schema
+        to handle both manual and AI piloted control."
+    validations:
+      required: true
+
+  - type: textarea
+    id: tasks
+    attributes:
+      label: Tasks / Requirements
+      description: List specific tasks required to complete this issue.
+      placeholder: |
+        - [ ] Add async support
+        - [ ] Update schema for manual/AI piloted control
+        - [ ] Unit test coverage
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional Notes
+      description: Any extra notes, links, or references (e.g., competition feedback, hardware changes).
+      placeholder: "Link to related issues, documents, or past problems"
