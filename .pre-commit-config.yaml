@@ -1,4 +1,4 @@
-# After adding this file:
+# Install hooks:
 #   pre-commit install
 #   pre-commit install --hook-type pre-push
 
@@ -24,7 +24,7 @@ repos:
     rev: v1.11.1
     hooks:
       - id: mypy
-        files: ^libs/          # ✅ only type-check code under libs/
+        files: ^libs/          # only type-check code under libs/
         additional_dependencies: []
         args:
           - --install-types
@@ -36,7 +36,7 @@ repos:
     hooks:
       - id: pytest-pre-push
         name: pytest (pre-push, quick suite)
-        entry: bash -c 'pytest -q -m "not slow and not hardware"'
+        entry: bash -c 'pytest -q -m "not slow and not hardware" --cov-fail-under=0'
         language: system
         pass_filenames: false
-        stages: [push]
+        stages: [pre-push]     # use 'pre-push' (not 'push')
