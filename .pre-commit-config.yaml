@@ -1,0 +1,42 @@
+# After adding this file:
+#   pre-commit install
+#   pre-commit install --hook-type pre-push
+
+repos:
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.1
+    hooks:
+      - id: mypy
+        files: ^libs/          # ✅ only type-check code under libs/
+        additional_dependencies: []
+        args:
+          - --install-types
+          - --non-interactive
+          - --pretty
+
+  # Run tests locally before pushing (skip slow/hardware by default)
+  - repo: local
+    hooks:
+      - id: pytest-pre-push
+        name: pytest (pre-push, quick suite)
+        entry: bash -c 'pytest -q -m "not slow and not hardware"'
+        language: system
+        pass_filenames: false
+        stages: [push]

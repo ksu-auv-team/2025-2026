@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ksu-auv-2025-2026"
+version = "0.1.0"
+description = "KSU AUV software (2025-2026)"
+requires-python = ">=3.10"
+dependencies = []  # put runtime deps here or keep using requirements.txt
+
+[tool.setuptools]
+packages = ["libs", "libs.db_manager", "libs.hardware_interface", "libs.movement_package", "libs.ai_package", "libs.sonar_package", "libs.camera_package"]
+package-dir = {"" = "."}
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.coverage.run]
+branch = true
+source = ["libs"]
+
+[tool.coverage.report]
+show_missing = true
