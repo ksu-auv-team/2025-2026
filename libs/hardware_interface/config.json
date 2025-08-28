@@ -1,0 +1,41 @@
+{
+    "defaultI2CBus": 1,
+    "defaultSerialPort": "/dev/ttyACM0",
+    "BNO08x_Serial": {
+        "id": 0,
+        "baudrate": 115200,
+        "timeout": 1
+    },
+    "BNO08x_I2C": {
+        "id": 0,
+        "address": "0x4B",
+        "bus": 1
+    },
+    "Motor_Controller": {
+        "id": 1,
+        "address": "0x4C",
+        "bus": 1,
+        "max_speed": 255,
+        "min_speed": 0
+    },
+    "Torp_Controller": {
+        "id": 2,
+        "address": "0x4D",
+        "bus": 1,
+        "arm_position": 100,
+        "fire_position": 200
+    },
+    "Arm_Controller": {
+        "id": 3,
+        "address": "0x4E",
+        "bus": 1,
+        "max_angle": 180,
+        "min_angle": 0
+    },
+    "PS_Controller": {
+        "id": 4,
+        "address": "0x4F",
+        "bus": 1,
+        "sensitivity": 1.0
+    }
+}
