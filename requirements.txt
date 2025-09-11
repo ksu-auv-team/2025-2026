@@ -1,0 +1,18 @@
+# --- Core ---
+fastapi==0.115.0
+uvicorn[standard]==0.30.5
+
+# --- Database (SQLAlchemy ORM + async drivers) ---
+SQLAlchemy==2.0.34
+aiosqlite==0.20.0        # Async driver for SQLite
+asyncpg==0.29.0          # Async driver for PostgreSQL (future use)
+
+# --- Config / Settings ---
+pydantic==2.9.2
+pydantic-settings==2.3.4
+
+# --- Migrations ---
+alembic==1.13.2
+
+# --- Optional (recommended for runtime) ---
+python-dotenv==1.0.1
