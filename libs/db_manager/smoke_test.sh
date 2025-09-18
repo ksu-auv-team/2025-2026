@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE="${BASE:-http://127.0.0.1:8000}"
+BASE="${BASE:-http://orin:8000}"
 
 say() { echo -e "\n== $* =="; }
 
