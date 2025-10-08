@@ -339,3 +339,10 @@ async def get_power_safety(id: int, db: aiosqlite.Connection = Depends(get_db)):
 async def delete_power_safety(id: int, db: aiosqlite.Connection = Depends(get_db)):
     if await _delete_by_id(db, "power_safety", id) == 0:
         raise HTTPException(404, "power_safety not found")
+# ----------------------------------------------------------------------
+# get_all
+# ----------------------------------------------------------------------
+@router.get("/get_all", tags=["get_all"])
+async def get_all():
+    
+    pass
