@@ -63,7 +63,8 @@ class HardwareInterface:
         @brief Initializes the hardware interface, loads configuration, and sets up the I2C bus.
         """
         logging.basicConfig(level=logging.INFO)
-        self.config: Dict[str, Any] = load_config('config/hardware_config.json')
+        self.config: Dict[str, Any] = load_config('config/hardware_config.json') #error handling for missing files? 
+                                                                                 # make sure the file exists 
 
         # Initialize I2C bus
         self.bus = smbus2.SMBus(self.config['i2c_bus'])
@@ -118,13 +119,25 @@ class HardwareInterface:
 
     def qualification(self):
         starting_delay = 5
-        initial_movemnet = 4
+        initial_movement = 4
         reverse_hold = 1
         down_hold = 3
         second_movement = 4
         up_movement = 5
         time.sleep(starting_delay)
-        breakCase = time.time() + initial_movemnet*1
+        breakCase = time.time() + initial_movement*1
+        
+        phases = {
+            #fix descriptors for phase names and values 
+            "phase_1": {"start": "Start of Phase 1", "end": "End of Phase 1"}, 
+            "phase_2": {"start": "Start of Phase 2", "end": "End of Phase 2"}, 
+            "phase_3": {"start": "Start of Phase 3", "end": "End of Phase 3"}, 
+            "phase_4": {"start": "Start of Phase 4", "end": "End of Phase 4"}, 
+            "phase_5": {"start": "Start of Phase 5", "end": "End of Phase 5"}, 
+            "phase_6": {"start": "Start of Phase 6", "end": "End of Phase 6"}  
+        }
+        
+        logging.info(phases["phase_1"]["start"])
         while True:
             motors: Dict[str, int] = {
                 "M1": int(255), "M2": int(255), "M3": int(0), "M4": int(255),
@@ -139,7 +152,9 @@ class HardwareInterface:
         }
         self._MotorController(motors)
         time.sleep(2)
+        logging.info(phases["phase_1"]["end"])
         breakCase = time.time() + reverse_hold*1
+        logging.info(phases["phase_2"]["start"])
         while True:
             motors: Dict[str, int] = {
                 "M1": int(0), "M2": int(0), "M3": int(255), "M4": int(0),
@@ -154,7 +169,9 @@ class HardwareInterface:
         }
         self._MotorController(motors)
         time.sleep(2)
+        logging.info(phases["phase_2"]["end"])
         breakCase = time.time() + down_hold*1
+        logging.info(phases["phase_3"]["start"])
         while True:
             motors: Dict[str, int] = {
                 "M1": int(127), "M2": int(127), "M3": int(127), "M4": int(127),
@@ -163,7 +180,9 @@ class HardwareInterface:
             self._MotorController(motors)
             if time.time() > breakCase:
                 break
+        logging.info(phases["phase_3"]["end"])
         breakCase = time.time() + second_movement*1
+        logging.info(phases["phase_4"]["start"])
         while True:
             motors: Dict[str, int] = {
                 "M1": int(255), "M2": int(255), "M3": int(0), "M4": int(255),
@@ -172,7 +191,9 @@ class HardwareInterface:
             self._MotorController(motors)
             if time.time() > breakCase:
                 break
+        logging.info(phases["phase_4"]["end"])
         breakCase = time.time() + up_movement*1
+        logging.info(phases["phase_5"]["start"])
         while True:
             motors: Dict[str, int] = {
                 "M1": int(127), "M2": int(127), "M3": int(127), "M4": int(127),
@@ -181,7 +202,7 @@ class HardwareInterface:
             self._MotorController(motors)
             if time.time() > breakCase:
                 break
-
+        logging.info(phases["phase_5"]["end"])
     # ------------------------------- Small helpers -------------------------------
 
     @staticmethod
@@ -253,7 +274,7 @@ class HardwareInterface:
                 level = logging.INFO if (err and '121' in err) else logging.ERROR
                 logging.log(level, "No device at %s (%s)", hex(addr), err or "no response")
 
-    def _config_addresses(self):
+    def _config_addresses(self) -> List[int]:
         """
         @brief Gather all configured I2C addresses as ints.
         """
@@ -299,7 +320,7 @@ class HardwareInterface:
                 self.sensor_data['IMU_Data']["Z"]     = float(vel.get("Z_vel", 0.0))
                 self.sensor_data['IMU_Data']["Roll"]  = float(ang.get("Roll", 0.0))
                 self.sensor_data['IMU_Data']["Pitch"] = float(ang.get("Pitch", 0.0))
-                self.sensor_data['IMU_Data']["Yaw"]   = float(ang.get("Yaw", 0.0))
+                self.sensor_data['IMU_Data']["Yaw"]   = float(ang.get("Yaw", 0.0)) 
                 logging.info("IMU: %s", self.sensor_data['IMU_Data'])
                 return
 
