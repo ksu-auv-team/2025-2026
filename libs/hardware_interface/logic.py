@@ -1,7 +1,11 @@
 import requests
 import json
 
-
+#update file to match current database 
+#fix the esc controller 
+# look into holoOcean sensor controller 
+#find how long to detect a model 
+# research lightweight YOLO models 
 def sendDataToServer(data: dict, url: str) -> None:
     """
     data: dict - Contains the sensor data acquired from the hardware.
