@@ -1,9 +1,6 @@
-from quart import Quart
+from . import create_app
 
-app = Quart(__name__)
+if __name__ == "__main__":
+    app = create_app()
 
-@app.route('/')
-async def hello():
-    return 'hello'
-
-app.run()
+    app.run(host="0.0.0.0", port=5002, debug=True, threaded=True)
