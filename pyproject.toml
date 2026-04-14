@@ -9,8 +9,9 @@ description = "KSU AUV software (2025-2026)"
 requires-python = ">=3.10"
 dependencies = [
     "httpx>=0.28.1",
+    "pytest>=9.0.3",
     "quart>=0.20.0",
-]  # put runtime deps here or keep using requirements.txt
+]  # put runtime dependencies here or keep using requirements.txt
 
 [tool.setuptools]
 packages = ["libs", "libs.db_manager", "libs.hardware_interface", "libs.movement_package", "libs.ai_package", "libs.sonar_package", "libs.camera_package"]
