@@ -97,10 +97,15 @@ class HardwareInterface:
 
         # IMU in engineering units (m/s and degrees)
         self.sensor_data: Dict[str, Any] = {
-            "IMU_Data": {"X": 0.0, "Y": 0.0, "Z": 0.0, "Roll": 0.0, "Pitch": 0.0, "Yaw": 0.0},
+            "IMU_Data": {
+                "ACCEL_X": 0.0, "ACCEL_Y": 0.0, "ACCEL_Z": 0.0,
+                "GYRO_X": 0.0, "GYRO_Y": 0.0, "GYRO_Z": 0.0,
+                "MAG_X": 0.0, "MAG_Y": 0.0, "MAG_Z": 0.0
+            },
             "Hydrophone_Data": {},
             "Power_Safety_Data": {}
         }
+
 
         # Serial IMU (Pico running Arduino sketch)
         self.bno08x = BNO08xSerial(
@@ -217,71 +222,30 @@ class HardwareInterface:
         """
         @brief Initializes/reads the IMU and updates sensor_data['IMU_Data'].
         @details
-          Prefers BNO08x.get_data() (dict) if available.
-          Falls back to get_data_json_str() or a raw "{x,y,z,r,p,y}" line if necessary.
+          Calls bno08x.get_data() which returns a dict with ACCEL_X/Y/Z, GYRO_X/Y/Z, MAG_X/Y/Z
+          matching the database schema. Values are signed integers centered at 0.
         """
         try:
             data = None
-            # Preferred: dict with engineering units from our helper class
+            # Get dict with raw sensor data from BNO08x helper class
             if hasattr(self.bno08x, "get_data"):
                 data = self.bno08x.get_data()  # type: ignore[attr-defined]
 
             if data:
-                vel = data.get("vel_ms", {})
-                ang = data.get("euler_deg", {})
-                self.sensor_data['IMU_Data']["X"]     = float(vel.get("X_vel", 0.0))
-                self.sensor_data['IMU_Data']["Y"]     = float(vel.get("Y_vel", 0.0))
-                self.sensor_data['IMU_Data']["Z"]     = float(vel.get("Z_vel", 0.0))
-                self.sensor_data['IMU_Data']["Roll"]  = float(ang.get("Roll", 0.0))
-                self.sensor_data['IMU_Data']["Pitch"] = float(ang.get("Pitch", 0.0))
-                self.sensor_data['IMU_Data']["Yaw"]   = float(ang.get("Yaw", 0.0)) 
+                # Extract raw sensor data matching database schema
+                self.sensor_data['IMU_Data']["ACCEL_X"] = float(data.get("ACCEL_X", 0.0))
+                self.sensor_data['IMU_Data']["ACCEL_Y"] = float(data.get("ACCEL_Y", 0.0))
+                self.sensor_data['IMU_Data']["ACCEL_Z"] = float(data.get("ACCEL_Z", 0.0))
+                self.sensor_data['IMU_Data']["GYRO_X"]  = float(data.get("GYRO_X", 0.0))
+                self.sensor_data['IMU_Data']["GYRO_Y"]  = float(data.get("GYRO_Y", 0.0))
+                self.sensor_data['IMU_Data']["GYRO_Z"]  = float(data.get("GYRO_Z", 0.0))
+                self.sensor_data['IMU_Data']["MAG_X"]   = float(data.get("MAG_X", 0.0))
+                self.sensor_data['IMU_Data']["MAG_Y"]   = float(data.get("MAG_Y", 0.0))
+                self.sensor_data['IMU_Data']["MAG_Z"]   = float(data.get("MAG_Z", 0.0))
                 logging.info("IMU: %s", self.sensor_data['IMU_Data'])
                 return
 
-            # Fallback: JSON string produced by helper
-            if hasattr(self.bno08x, "get_data_json_str"):
-                s = self.bno08x.get_data_json_str()  # type: ignore[attr-defined]
-                if s:
-                    try:
-                        obj = json.loads(s)
-                        vel = obj.get("vel_ms", {})
-                        ang = obj.get("euler_deg", {})
-                        self.sensor_data['IMU_Data']["X"]     = float(vel.get("X_vel", 0.0))
-                        self.sensor_data['IMU_Data']["Y"]     = float(vel.get("Y_vel", 0.0))
-                        self.sensor_data['IMU_Data']["Z"]     = float(vel.get("Z_vel", 0.0))
-                        self.sensor_data['IMU_Data']["Roll"]  = float(ang.get("Roll", 0.0))
-                        self.sensor_data['IMU_Data']["Pitch"] = float(ang.get("Pitch", 0.0))
-                        self.sensor_data['IMU_Data']["Yaw"]   = float(ang.get("Yaw", 0.0))
-                        logging.info("IMU: %s", self.sensor_data['IMU_Data'])
-                        return
-                    except Exception:
-                        pass
-
-            # Last-resort fallback: a raw "{vx,vy,vz,roll,pitch,yaw}" line of 0..256 ints
-            if hasattr(self.bno08x, "serial") and self.bno08x.serial and self.bno08x.serial.is_open:
-                line = self.bno08x.serial.readline().decode("utf-8", errors="ignore").strip()
-                if line.startswith("{") and line.endswith("}"):
-                    parts = [p.strip() for p in line[1:-1].split(",")]
-                    if len(parts) == 6:
-                        vals = [max(0, min(256, int(p))) for p in parts]
-                        # Map back to engineering units:
-                        # - Velocities assume MCU mapped [-VEL_MAX, +VEL_MAX] -> [0..256]; default VEL_MAX=2.0
-                        # - Angles assume MCU mapped [-180..180] -> [0..256]
-                        VEL_MAX = getattr(self.bno08x, "VEL_MAX_MPS", 2.0)
-                        def u256_to_vel(u): return (float(u)/256.0) * (2.0*VEL_MAX) - VEL_MAX
-                        def u256_to_deg(u): return (float(u)/256.0) * 360.0 - 180.0
-
-                        self.sensor_data['IMU_Data']["X"]     = u256_to_vel(vals[0])
-                        self.sensor_data['IMU_Data']["Y"]     = u256_to_vel(vals[1])
-                        self.sensor_data['IMU_Data']["Z"]     = u256_to_vel(vals[2])
-                        self.sensor_data['IMU_Data']["Roll"]  = u256_to_deg(vals[3])
-                        self.sensor_data['IMU_Data']["Pitch"] = u256_to_deg(vals[4])
-                        self.sensor_data['IMU_Data']["Yaw"]   = u256_to_deg(vals[5])
-
-                        logging.info("IMU (fallback): %s", self.sensor_data['IMU_Data'])
-                        return
-
-            logging.debug("IMU packet: None (timeout/invalid line)")
+            logging.debug("IMU packet: None (timeout/invalid data)")
         except Exception as e:
             logging.error("Failed to retrieve IMU data: %s", str(e))
 
@@ -384,6 +348,8 @@ class HardwareInterface:
           step_index: int
           X, Y, Z: float
           roll, pitch, yaw: float  (lowercase)
+        
+        New Schema accel x, accel y, accel z, gyro [x,y,z], mag[x,y,z]
         """
         # Extract with safe defaults; cast to float
         X = float(imu_raw.get('X', 0.0))
@@ -396,13 +362,16 @@ class HardwareInterface:
         yaw   = float(imu_raw.get('yaw',   imu_raw.get('Yaw',   0.0)))
 
         payload = {
-            "step_index": int(self._imu_step_index + 1),
-            "X": X, "Y": Y, "Z": Z,
-            "roll": roll, "pitch": pitch, "yaw": yaw
+            "ACCEL_X": float(imu_raw.get('ACCEL_X', 0.0)),
+            "ACCEL_Y": float(imu_raw.get('ACCEL_Y', 0.0)),
+            "ACCEL_Z": float(imu_raw.get('ACCEL_Z', 0.0)),
+            "GYRO_X":  float(imu_raw.get('GYRO_X', 0.0)),
+            "GYRO_Y":  float(imu_raw.get('GYRO_Y', 0.0)),
+            "GYRO_Z":  float(imu_raw.get('GYRO_Z', 0.0)),
+            "MAG_X":   float(imu_raw.get('MAG_X', 0.0)),
+            "MAG_Y":   float(imu_raw.get('MAG_Y', 0.0)),
+            "MAG_Z":   float(imu_raw.get('MAG_Z', 0.0))
         }
-
-        # Increment after use
-        self._imu_step_index += 1
         return payload
 
 

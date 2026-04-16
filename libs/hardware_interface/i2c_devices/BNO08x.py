@@ -3,22 +3,21 @@
 @brief Read BNO08x packets from a microcontroller over a serial cable and return parsed JSON.
 @details
   Expects lines like:
-      {X_Vel,Y_Vel,Z_Vel,Roll,Pitch,Yaw}
+      {accel_x,accel_y,accel_z,gyro_x,gyro_y,gyro_z,mag_x,mag_y,mag_z}
   where each field is an integer in [0..256] with 127 ~ center.
   This matches the Arduino sketch that prints one packet per line via Serial.println().
 
   The parser:
     - Reads newline-terminated lines from the serial port.
     - Validates the brace-enclosed, comma-separated format.
-    - Converts the six values to integers, clamps to [0..256].
+    - Converts the nine values to integers, clamps to [0..256].
     - Returns a Python dict (JSON-serializable) with:
-        * raw: original 0..256 values
-        * signed: values centered at 0 by subtracting 127 (range ~[-127..+129])
-        * engineering units (optional back-conversion):
-            - vel_ms: velocities in m/s (requires VEL_MAX to match MCU)
-            - euler_deg: angles in degrees, assuming MCU mapped [-180..+180] → [0..256]
+        * raw: original 0..256 values  
+        * ACCEL_X/Y/Z: accelerometer readings (signed, centered at 0)
+        * GYRO_X/Y/Z: gyroscope readings (signed, centered at 0)
+        * MAG_X/Y/Z: magnetometer readings (signed, centered at 0)
 
-  Adjust VEL_MAX_MPS if your Arduino code uses a different velocity scale.
+  This format matches the database IMU table schema.
 """
 
 import os
@@ -31,12 +30,9 @@ class BNO08xSerial:
     """
     @brief Serial interface helper for BNO08x data from a microcontroller.
     @details
-      Reads ASCII lines in the format "{x,y,z,roll,pitch,yaw}" where each value is 0..256.
-      Provides convenience methods to return parsed data as JSON/dict.
+      Reads ASCII lines in the format "{ax,ay,az,gx,gy,gz,mx,my,mz}" where each value is 0..256.
+      Provides convenience methods to return parsed data as JSON/dict matching the database schema.
     """
-
-    # Must match the scale used on the microcontroller (Arduino sketch).
-    VEL_MAX_MPS: float = 2.0  # [-VEL_MAX, +VEL_MAX] ↔ [0..256]
 
     def __init__(self, port: str = "/dev/ttyACM0", baudrate: int = 115200, timeout: float = 1.0):
         """
@@ -120,7 +116,7 @@ class BNO08xSerial:
     @staticmethod
     def _parse_packet(line: str) -> Optional[Dict[str, int]]:
         """
-        @brief Parse a line like "{12,34,56,78,90,123}" into six integers 0..256.
+        @brief Parse a line like "{ax,ay,az,gx,gy,gz,mx,my,mz}" into nine integers 0..256.
         @param line Input line (already stripped).
         @return Dict with raw integer fields or None if invalid.
         """
@@ -128,7 +124,7 @@ class BNO08xSerial:
             return None
         body = line[1:-1].strip()
         parts = body.split(",")
-        if len(parts) != 6:
+        if len(parts) != 9:
             return None
         try:
             vals = [BNO08xSerial._clamp_uint8_257(int(p.strip())) for p in parts]
@@ -136,12 +132,15 @@ class BNO08xSerial:
             return None
 
         return {
-            "X_vel_u": vals[0],
-            "Y_vel_u": vals[1],
-            "Z_vel_u": vals[2],
-            "Roll_u":  vals[3],
-            "Pitch_u": vals[4],
-            "Yaw_u":   vals[5],
+            "ACCEL_X_u": vals[0],
+            "ACCEL_Y_u": vals[1],
+            "ACCEL_Z_u": vals[2],
+            "GYRO_X_u":  vals[3],
+            "GYRO_Y_u":  vals[4],
+            "GYRO_Z_u":  vals[5],
+            "MAG_X_u":   vals[6],
+            "MAG_Y_u":   vals[7],
+            "MAG_Z_u":   vals[8],
         }
 
     def get_data(self) -> Optional[Dict[str, Any]]:
@@ -149,10 +148,8 @@ class BNO08xSerial:
         @brief Read one packet from the serial port and return parsed JSON-friendly dict.
         @details
           Returns a dictionary containing:
-            - raw (0..256 ints)
-            - signed (centered around 0)
-            - vel_ms (reconstructed m/s using VEL_MAX_MPS)
-            - euler_deg (reconstructed degrees, assuming [-180..180] mapping)
+            - raw (0..256 ints for accel, gyro, mag)
+            - ACCEL_X/Y/Z, GYRO_X/Y/Z, MAG_X/Y/Z (matching database schema)
         @return Dict or None (if no valid line received within timeout).
         """
         line = self._readline()
@@ -163,42 +160,37 @@ class BNO08xSerial:
         if pkt is None:
             return None
 
-        # Raw 0..256
-        x_u = pkt["X_vel_u"]; y_u = pkt["Y_vel_u"]; z_u = pkt["Z_vel_u"]
-        r_u = pkt["Roll_u"];  p_u = pkt["Pitch_u"]; yv_u = pkt["Yaw_u"]
+        # Raw 0..256 values
+        ax_u = pkt["ACCEL_X_u"]; ay_u = pkt["ACCEL_Y_u"]; az_u = pkt["ACCEL_Z_u"]
+        gx_u = pkt["GYRO_X_u"];  gy_u = pkt["GYRO_Y_u"];  gz_u = pkt["GYRO_Z_u"]
+        mx_u = pkt["MAG_X_u"];   my_u = pkt["MAG_Y_u"];   mz_u = pkt["MAG_Z_u"]
 
-        # Signed around zero
-        x_s = self._signed_from_center(x_u)
-        y_s = self._signed_from_center(y_u)
-        z_s = self._signed_from_center(z_u)
-        r_s = self._signed_from_center(r_u)
-        p_s = self._signed_from_center(p_u)
-        yv_s = self._signed_from_center(yv_u)
-
-        # Engineering units
-        x_ms = self._vel_from_u256(x_u)
-        y_ms = self._vel_from_u256(y_u)
-        z_ms = self._vel_from_u256(z_u)
-
-        roll_deg  = self._deg_from_u256(r_u)
-        pitch_deg = self._deg_from_u256(p_u)
-        yaw_deg   = self._deg_from_u256(yv_u)
+        # Convert to signed values centered at zero
+        ax_s = self._signed_from_center(ax_u)
+        ay_s = self._signed_from_center(ay_u)
+        az_s = self._signed_from_center(az_u)
+        gx_s = self._signed_from_center(gx_u)
+        gy_s = self._signed_from_center(gy_u)
+        gz_s = self._signed_from_center(gz_u)
+        mx_s = self._signed_from_center(mx_u)
+        my_s = self._signed_from_center(my_u)
+        mz_s = self._signed_from_center(mz_u)
 
         return {
             "raw": {
-                "X_vel_u": x_u, "Y_vel_u": y_u, "Z_vel_u": z_u,
-                "Roll_u": r_u, "Pitch_u": p_u, "Yaw_u": yv_u
+                "ACCEL_X_u": ax_u, "ACCEL_Y_u": ay_u, "ACCEL_Z_u": az_u,
+                "GYRO_X_u": gx_u, "GYRO_Y_u": gy_u, "GYRO_Z_u": gz_u,
+                "MAG_X_u": mx_u, "MAG_Y_u": my_u, "MAG_Z_u": mz_u
             },
-            "signed": {
-                "X_vel": x_s, "Y_vel": y_s, "Z_vel": z_s,
-                "Roll": r_s, "Pitch": p_s, "Yaw": yv_s
-            },
-            "vel_ms": {
-                "X_vel": x_ms, "Y_vel": y_ms, "Z_vel": z_ms
-            },
-            "euler_deg": {
-                "Roll": roll_deg, "Pitch": pitch_deg, "Yaw": yaw_deg
-            },
+            "ACCEL_X": float(ax_s),
+            "ACCEL_Y": float(ay_s),
+            "ACCEL_Z": float(az_s),
+            "GYRO_X": float(gx_s),
+            "GYRO_Y": float(gy_s),
+            "GYRO_Z": float(gz_s),
+            "MAG_X": float(mx_s),
+            "MAG_Y": float(my_s),
+            "MAG_Z": float(mz_s),
             "line": line  # optional: keep original line for debugging
         }
 
