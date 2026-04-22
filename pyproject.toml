@@ -49,6 +49,7 @@ dependencies = [
     "uvloop==0.21.0",
     "watchfiles==1.1.0",
     "websockets==15.0.1",
+    "smbus2==0.6.1"
 ]
 
 [project.scripts]
