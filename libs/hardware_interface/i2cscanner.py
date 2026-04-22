@@ -1,7 +1,7 @@
 import smbus2
 
 
-def scan_i2c_bus(bus_number: int = 7) -> list[str]:
+def scan_i2c_bus(bus_number: int = 2) -> list[str]:
     devices = []
     with smbus2.SMBus(bus_number) as bus:
         for addr in range(0x03, 0x78):
