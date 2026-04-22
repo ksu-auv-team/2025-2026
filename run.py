@@ -1,6 +1,7 @@
 import subprocess
 import sys
 import os
+from datetime import datetime
 
 
 def main():
@@ -10,7 +11,8 @@ def main():
     data_visualizer_dir = os.path.join(current_dir, 'libs/data_visualizer')
     hardware_interface = os.path.join(current_dir, 'libs/hardware_interface/hardware_interface.py')
 
-    logs_dir = os.path.join(current_dir, 'logs')
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    logs_dir = os.path.join(current_dir, 'logs', timestamp)
     os.makedirs(logs_dir, exist_ok=True)
 
     db_log = open(os.path.join(logs_dir, 'db_manager.log'), 'w')
@@ -38,7 +40,7 @@ def main():
         db_log.close()
         dv_log.close()
         hw_log.close()
-        print("Logs saved in 'logs/' directory.")
+        print(f"Logs saved in 'logs/{timestamp}/' directory.")
         sys.exit(0)
 
 
