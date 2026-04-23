@@ -31,10 +31,10 @@ def send_motor_values(bus: smbus2.SMBus, values: list[int]) -> bool:
     # Arduino receiveEvent expects 6 bytes: register byte (header) + 5 motor values.
     # write_i2c_block_data sends: [register] + values = 6 bytes total.
     try:
-        bus.write_i2c_block_data(I2C_ADDRESS, 0, values)
+        bus.write_i2c_block_data(int(I2C_ADDRESS, 16), 0, values)
         return True
     except OSError as e:
-        print(f"[motors] I2C error (address 0x{I2C_ADDRESS:02X} on bus {bus.fd}): {e}")
+        print(f"[motors] I2C error (address {I2C_ADDRESS} on bus {bus.fd}): {e}")
         return False
 
 
