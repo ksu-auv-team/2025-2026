@@ -5,7 +5,7 @@ import smbus2
 from libs.db_manager.models import OutputsRead
 from libs.hardware_interface.db_connection import DB_BASE_URL, DBConnection
 
-I2C_BUS = 2
+I2C_BUS = 7
 I2C_ADDRESS = "0x08"
 DEFAULT_PWM = 127
 POLL_INTERVAL = 0.05  # 50ms — Arduino loop runs every 20ms
