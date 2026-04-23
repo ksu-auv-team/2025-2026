@@ -63,6 +63,8 @@ def run(
             if last_id != row.ID and send_motor_values(bus, _extract_motor_values(row)):
                 last_id = row.ID
 
+            print(f"[motors] Sent motor values for DB row ID {row.ID}")
+
             time.sleep(poll_interval)
 
 
