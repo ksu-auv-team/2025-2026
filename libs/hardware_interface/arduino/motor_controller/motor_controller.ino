@@ -10,80 +10,80 @@ unsigned long lastReceiveTime = 0;
 const uint8_t defaultPWM = 127;
 const uint16_t thrusterLow = 1350;
 const uint16_t thrusterHigh = 1650;
+bool I2CTimeoutSet = false;
+uint8_t loopTime = 50; //Hz
+uint8_t loopDelay = (1000 / loopTime);
 
-// Values received over I2C: MOTOR1, MOTOR2, MOTOR3, MOTOR4, VERTICAL_THRUST
-const uint8_t MOTOR_COUNT = 5;
-// Physical ESCs: M1-M4 independent, M5-M8 all share VERTICAL_THRUST (motorValues[4])
-const uint8_t ESC_COUNT = 8;
-
-uint8_t motorValues[MOTOR_COUNT] = { defaultPWM, defaultPWM, defaultPWM, defaultPWM, defaultPWM };
-bool newData = false;
-bool i2cTimeout = false;
-
-Servo ESC[ESC_COUNT];
-// M1=P3, M2=P11, M3=P10, M4=P9, M5=P6, M6=P5, M7=P2, M8=P0
-const byte ESCPins[ESC_COUNT] = { 3, 11, 10, 9, 6, 5, 2, 0 };
-// Maps each ESC index to its motorValues index (M5-M8 all use VERTICAL_THRUST at index 4)
-const uint8_t escToMotor[ESC_COUNT] = { 0, 1, 2, 3, 4, 4, 4, 4 };
+uint8_t motorValues[8] = { defaultPWM, defaultPWM, defaultPWM, defaultPWM, defaultPWM, defaultPWM, defaultPWM, defaultPWM };
+bool newData = 0;
+Servo ESC[8];
+const uint8_t ESCPins[] = { 3, 11, 10, 9, 6, 5, 2, 0 };
+// Motors in order by I2C call 1, 2, 3, 4, 5, 6, 7, 8
+// By Motors: M1 = P3, M2 = P11, M3 = P10, M4 = P9, M5 = P6, M6 = P5, M7 = P2, M8 = P0
+// By Pins: P0 = M8, P2 = M7, P3 = M1, P5 = M6, P6 = M5, P9 = M4, P10 = M3, P11 = M2
 
 void setup() {
-#ifdef SERIALDEBUG
+#ifdef SERIALDEBUG  // prints to USB when SERIALDEBUG is defined
   Serial.begin(9600);
   Serial.println("Serial Enabled");
 #endif
-  Wire.begin(I2CADDRESS);
-  Wire.onReceive(receiveEvent);
-  for (int i = 0; i < ESC_COUNT; i++) {
+  Wire.begin(I2CADDRESS);        // start listening for I2C commands
+  Wire.onReceive(receiveEvent);  // register the I2C interrupt
+  for (int i = 0; i < 8; i++) {  // register each pin as a servo object
     ESC[i].attach(ESCPins[i]);
-    ESC[i].writeMicroseconds(map(defaultPWM, 0, 255, thrusterLow, thrusterHigh));
   }
   lastReceiveTime = millis();
 }
 
 void loop() {
   unsigned long currentTime = millis();
-
-  if (currentTime - lastReceiveTime > timeout) {
-    if (!i2cTimeout) {
-      for (int i = 0; i < ESC_COUNT; i++) {
-        ESC[i].writeMicroseconds(map(defaultPWM, 0, 255, thrusterLow, thrusterHigh));
+  if (currentTime - lastReceiveTime > timeout) {  // code to run after not recieving I2C commands for <timeout> time
+    for (int i = 0; i < 8; i++) {
+      ESC[i].writeMicroseconds(map(defaultPWM, 0, 255, thrusterLow, thrusterHigh));
+      I2CTimeoutSet = true;
+#ifdef SERIALDEBUG  // prints to USB when SERIALDEBUG is defined
+      Serial.println("I2C Timeout");
+      for (int i = 0; i < 8; i++) {
+        Serial.print(i + 1);
+        Serial.print(": ");
+        Serial.print(motorValues[i]);
+        Serial.print(" ");
       }
-      i2cTimeout = true;
-#ifdef SERIALDEBUG
-      Serial.println("I2C Timeout — motors set to neutral");
+      Serial.println(" ");
 #endif
     }
-  } else if (newData) {
-    for (int i = 0; i < ESC_COUNT; i++) {
-      ESC[i].writeMicroseconds(map(motorValues[escToMotor[i]], 0, 255, thrusterLow, thrusterHigh));
+  } else if (newData) {  // code to run in order to assign commanded thrust level
+    for (int i = 0; i < 8; i++) {
+      ESC[i].writeMicroseconds(map(motorValues[i], 0, 255, thrusterLow, thrusterHigh));
+      I2CTimeoutSet = false;
     }
-    i2cTimeout = false;
-    newData = false;
-#ifdef SERIALDEBUG
-    for (int i = 0; i < MOTOR_COUNT; i++) {
-      Serial.print("M");
+    newData = 0;
+  }
+
+  int ledToggle = !ledToggle;  // toggles the onboard LED every second main loop
+  if (ledToggle) {
+    digitalWrite(1, !digitalRead(1));
+  }
+
+  delay(loopDelay);  // limits how fast the main loop will run
+}
+
+void receiveEvent(int howMany) {  // code that runs every time we are given an I2C command
+  while (Wire.available() && (howMany == 6+1)) {
+    Wire.read();
+    for (int i = 0; i < 6; i++) {
+      motorValues[i] = Wire.read();  // reads the buffer 8 times and assigns those values to the servo value array
+    }
+#ifdef SERIALDEBUG  // prints to USB when SERIALDEBUG is defined
+    for (int i = 0; i < 6; i++) {
       Serial.print(i + 1);
       Serial.print(": ");
       Serial.print(motorValues[i]);
-      Serial.print("  ");
+      Serial.print(" ");
     }
-    Serial.println();
+    Serial.println(" ");
 #endif
+    newData = 1;
+    lastReceiveTime = millis();  // for the timeout function
   }
-
-  delay(20);
-}
-
-void receiveEvent(int howMany) {
-  // Expect 6 bytes: 1 header (discarded) + 5 motor values
-  if (howMany != 6) {
-    while (Wire.available()) Wire.read();
-    return;
-  }
-  Wire.read();  // discard header byte
-  for (int i = 0; i < MOTOR_COUNT; i++) {
-    motorValues[i] = Wire.read();
-  }
-  newData = true;
-  lastReceiveTime = millis();
 }

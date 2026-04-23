@@ -16,9 +16,9 @@ import time
 import smbus2
 
 from libs.hardware_interface.modules.motors import (
+    DEFAULT_PWM,
     I2C_ADDRESS,
     I2C_BUS,
-    DEFAULT_PWM,
     send_motor_values,
 )
 
