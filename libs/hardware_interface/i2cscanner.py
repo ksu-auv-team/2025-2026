@@ -16,8 +16,8 @@ def scan_i2c_bus(bus_number: int = 2) -> list[str]:
 if __name__ == "__main__":
     found = scan_i2c_bus(7)
     if found:
-        print(f"Found {len(found)} device(s) on bus 2:")
+        print(f"Found {len(found)} device(s) on bus 7:")
         for addr in found:
             print(f"  {addr}")
     else:
-        print("No devices found on bus 2.")
+        print("No devices found on bus 7.")
