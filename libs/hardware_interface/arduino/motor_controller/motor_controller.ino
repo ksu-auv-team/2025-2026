@@ -8,8 +8,8 @@
 const unsigned long timeout = 2000;
 unsigned long lastReceiveTime = 0;
 const uint8_t defaultPWM = 127;
-const uint16_t thrusterLow = 1350;
-const uint16_t thrusterHigh = 1650;
+const uint16_t thrusterLow = 1200;
+const uint16_t thrusterHigh = 1800;
 bool I2CTimeoutSet = false;
 uint8_t loopTime = 50; //Hz
 uint8_t loopDelay = (1000 / loopTime);
