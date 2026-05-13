@@ -1,45 +1,10 @@
-import subprocess
-import sys
-from pathlib import Path
-
-import yaml
-
-PROJECT_ROOT = Path(__file__).parents[2]
-CONFIG_PATH = PROJECT_ROOT / "config.yaml"
+# Local imports
+from .process_manager import ProcessManager
+from .scanner import scan_i2c_bus
 
 
-def load_config() -> dict:
-    with CONFIG_PATH.open() as f:
-        return yaml.safe_load(f)
+def detect_i2c_devices(bus_number: int) -> list[int]:
+    """Detect I2C devices on the specified bus and return their addresses."""
+    return scan_i2c_bus(bus_number)
 
 
-def main() -> None:
-    config = load_config()
-    hardware = config.get("hardware", {})
-
-    processes: list[subprocess.Popen] = []
-
-    if hardware.get("motors", False):
-        motors_module = str(PROJECT_ROOT / "libs" / "hardware_interface" / "modules" / "motors.py")
-        proc = subprocess.Popen([sys.executable, motors_module])
-        processes.append(proc)
-        print("Motors: started")
-
-    if not processes:
-        print("No hardware modules enabled in config.yaml")
-        return
-
-    try:
-        for proc in processes:
-            proc.wait()
-    except KeyboardInterrupt:
-        print("Shutting down hardware interface...")
-        for proc in processes:
-            proc.terminate()
-        for proc in processes:
-            proc.wait()
-        print("Hardware interface stopped.")
-
-
-if __name__ == "__main__":
-    main()
