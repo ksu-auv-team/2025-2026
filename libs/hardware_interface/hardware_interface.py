@@ -1,5 +1,5 @@
 # Local imports
-from .process_manager import ProcessManager
+from .process_manager import HardwareProcessManager
 from .scanner import scan_i2c_bus
 
 

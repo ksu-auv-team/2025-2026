@@ -54,9 +54,18 @@ void onReceive(int bytes) {
     for (int i = 4; i < NUM_MOTORS; i++) {
         motors[i].writeMicroseconds(remaining_us);
     }
+
+    Serial.print("Received thrust: ");
+    for (int i = 0; i < NUM_MOTORS; i++) {
+        Serial.print(toMicroseconds(buf[i + 1]));
+        Serial.print(" ");
+    }
+    Serial.println();
 }
 
 void setup() {
+    Serial.begin(115200);
+
     Wire.begin(I2C_ADDRESS);
     Wire.onReceive(onReceive);
 
