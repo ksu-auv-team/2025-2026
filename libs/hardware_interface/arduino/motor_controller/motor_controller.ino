@@ -1,11 +1,9 @@
-#include <Arduino.h>
 #include <Wire.h>
 #include <Servo.h>
 
 // ── I2C ──────────────────────────────────────────────────────────────────────
+// SDA/SCL are the board's default I2C pins (e.g. A4/A5 on Uno, 20/21 on Mega)
 #define I2C_ADDRESS  0x08
-#define PIN_SDA      4
-#define PIN_SCL      5
 
 // ── Motor PWM Pins ────────────────────────────────────────────────────────────
 #define PIN_MOTOR1   6
@@ -59,8 +57,6 @@ void onReceive(int bytes) {
 }
 
 void setup() {
-    Wire.setSDA(PIN_SDA);
-    Wire.setSCL(PIN_SCL);
     Wire.begin(I2C_ADDRESS);
     Wire.onReceive(onReceive);
 
