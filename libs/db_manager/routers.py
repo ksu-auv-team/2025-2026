@@ -118,12 +118,12 @@ async def delete_inputs(id: int, db: aiosqlite.Connection = Depends(get_db)):
 @router.post("/outputs", tags=["outputs"])
 async def create_outputs(
     MOTOR1: int = Form(...), MOTOR2: int = Form(...), MOTOR3: int = Form(...), MOTOR4: int = Form(...),
-    VERTICAL_THRUST: int = Form(...),
+    MOTOR5: int = Form(...), MOTOR6: int = Form(...), MOTOR7: int = Form(...), MOTOR8: int = Form(...),
     S1: int = Form(...), S2: int = Form(...), S3: int = Form(...),
     db: aiosqlite.Connection = Depends(get_db),
 ):
-    cols = ["MOTOR1", "MOTOR2", "MOTOR3", "MOTOR4", "VERTICAL_THRUST", "S1", "S2", "S3"]
-    vals = [MOTOR1, MOTOR2, MOTOR3, MOTOR4, VERTICAL_THRUST, S1, S2, S3]
+    cols = ["MOTOR1", "MOTOR2", "MOTOR3", "MOTOR4", "MOTOR5", "MOTOR6", "MOTOR7", "MOTOR8", "S1", "S2", "S3"]
+    vals = [MOTOR1, MOTOR2, MOTOR3, MOTOR4, MOTOR5, MOTOR6, MOTOR7, MOTOR8, S1, S2, S3]
     return await _insert_and_fetch(db, "outputs", cols, vals)
 
 @router.get("/outputs", tags=["outputs"])
