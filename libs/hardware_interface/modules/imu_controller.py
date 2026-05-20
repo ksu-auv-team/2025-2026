@@ -2,10 +2,9 @@ import argparse
 import struct
 import time
 
-from auvsoftware.config import get_env
-from auvsoftware.hardware_interface.i2c_commands import read as i2c_read
-from auvsoftware.hardware_interface.i2c_commands import write as i2c_write
-from auvsoftware.quick_request import AUVClient
+from config import get_env
+from hardware_interface.i2c_commands import read as i2c_read, write as i2c_write
+from quick_request import AUVClient
 
 _BUS: int = int(get_env("I2C_BUS_NUMBER", required=True))
 _ADDRESS: int = int(get_env("IMU_ADDRESS", required=True).strip(), 16)

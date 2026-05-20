@@ -18,7 +18,7 @@ def scan_i2c_bus(bus_number: int) -> list[int]:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Scan an I2C bus for connected devices."
+        description="Scan an I2C bus for connected devices.",
     )
     parser.add_argument(
         "bus",

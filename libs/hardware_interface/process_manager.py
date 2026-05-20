@@ -1,10 +1,9 @@
 import logging
 import threading
-import time
-from typing import Callable
+from collections.abc import Callable
 
-from auvsoftware.config import get_env
-from auvsoftware.hardware_interface.scanner import scan_i2c_bus
+from config import get_env
+from hardware_interface.scanner import scan_i2c_bus
 
 _RETRY_DELAY: float = 5.0
 _log = logging.getLogger(__name__)
@@ -23,51 +22,51 @@ def _with_retry(name: str, fn: Callable, stop_event: threading.Event) -> None:
 
 
 def _run_esc(stop_event: threading.Event) -> None:
-    from auvsoftware.logging_config import setup_logging
+    from logging_config import setup_logging
     setup_logging("esc")
-    from auvsoftware.hardware_interface.modules.esc_controller import ESCController
+    from hardware_interface.modules.esc_controller import ESCController
     _with_retry("esc", lambda: ESCController().run(), stop_event)
 
 
 def _run_arm(stop_event: threading.Event) -> None:
-    from auvsoftware.logging_config import setup_logging
+    from logging_config import setup_logging
     setup_logging("arm")
-    from auvsoftware.hardware_interface.modules.arm_controller import ArmController
+    from hardware_interface.modules.arm_controller import ArmController
     _with_retry("arm", lambda: ArmController().run(), stop_event)
 
 
 def _run_imu(stop_event: threading.Event) -> None:
-    from auvsoftware.logging_config import setup_logging
+    from logging_config import setup_logging
     setup_logging("imu")
-    from auvsoftware.hardware_interface.modules.imu_controller import ImuController
+    from hardware_interface.modules.imu_controller import ImuController
     _with_retry("imu", lambda: ImuController().run(), stop_event)
 
 
 def _run_psa(stop_event: threading.Event) -> None:
-    from auvsoftware.logging_config import setup_logging
+    from logging_config import setup_logging
     setup_logging("psa")
-    from auvsoftware.hardware_interface.modules.psa_controller import PsaController
+    from hardware_interface.modules.psa_controller import PsaController
     _with_retry("psa", lambda: PsaController().run(), stop_event)
 
 
 def _run_torpedo(stop_event: threading.Event) -> None:
-    from auvsoftware.logging_config import setup_logging
+    from logging_config import setup_logging
     setup_logging("torpedo")
-    from auvsoftware.hardware_interface.modules.tor_controller import TorpedoController
+    from hardware_interface.modules.tor_controller import TorpedoController
     _with_retry("torpedo", lambda: TorpedoController().run(), stop_event)
 
 
 def _run_pressure(stop_event: threading.Event) -> None:
-    from auvsoftware.logging_config import setup_logging
+    from logging_config import setup_logging
     setup_logging("pressure")
-    from auvsoftware.hardware_interface.modules.pre_controller import PressureController
+    from hardware_interface.modules.pre_controller import PressureController
     _with_retry("pressure", lambda: PressureController().run(), stop_event)
 
 
 def _run_display(stop_event: threading.Event) -> None:
-    from auvsoftware.logging_config import setup_logging
+    from logging_config import setup_logging
     setup_logging("display")
-    from auvsoftware.hardware_interface.modules.dis_controller import DisplayController
+    from hardware_interface.modules.dis_controller import DisplayController
     _with_retry("display", lambda: DisplayController().run(), stop_event)
 
 
@@ -193,7 +192,7 @@ class HardwareProcessManager:
             return
         stop_event = threading.Event()
         t = threading.Thread(
-            target=_NAME_TO_TARGET[name], args=(stop_event,), name=name, daemon=True
+            target=_NAME_TO_TARGET[name], args=(stop_event,), name=name, daemon=True,
         )
         t.start()
         self._threads[name] = (t, stop_event)
