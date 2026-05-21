@@ -35,7 +35,7 @@ dependencies = [
     "python-multipart==0.0.20",
     "PyYAML==6.0.2",
     "requests==2.34.2",
-    "rich==14.1.0",
+    "rich==14.2.0",
     "rich-toolkit==0.15.1",
     "rignore==0.6.4",
     "sentry-sdk==2.38.0",
