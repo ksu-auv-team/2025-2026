@@ -42,19 +42,20 @@ dependencies = [
     "shellingham==1.5.4",
     "sniffio==1.3.1",
     "starlette==0.48.0",
-    "typer==0.17.4",
+    "textual==8.2.5",
     "typing-inspection==0.4.1",
     "typing_extensions==4.15.0",
     "urllib3==2.5.0",
     "uvicorn==0.35.0",
     "uvloop==0.21.0",
+    "plotext>=5.2",
     "watchfiles==1.1.0",
     "websockets==15.0.1",
     "smbus2==0.6.1"
 ]
 
 [project.scripts]
-auv = "run:main"
+auv = "libs.ui:main"
 
 [tool.setuptools]
 packages = ["libs", "libs.db_manager", "libs.hardware_interface", "libs.movement_package", "libs.ai_package", "libs.sonar_package", "libs.camera_package"]
