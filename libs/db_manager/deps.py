@@ -44,7 +44,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             MOTOR2 INTEGER NOT NULL,
             MOTOR3 INTEGER NOT NULL,
             MOTOR4 INTEGER NOT NULL,
-            VERTICAL_THRUST INTEGER NOT NULL,
+            MOTOR5 INTEGER NOT NULL,
+            MOTOR6 INTEGER NOT NULL,
+            MOTOR7 INTEGER NOT NULL,
+            MOTOR8 INTEGER NOT NULL,
             S1 INTEGER NOT NULL,
             S2 INTEGER NOT NULL,
             S3 INTEGER NOT NULL

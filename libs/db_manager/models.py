@@ -1,5 +1,7 @@
-from typing import Optional, List
-from pydantic import BaseModel, Field, conint, confloat, constr
+from typing import Optional
+
+from pydantic import BaseModel, Field, confloat, conint, constr
+
 
 # ---- inputs ----
 class InputsCreate(BaseModel):
@@ -17,7 +19,7 @@ class InputsRead(InputsCreate):
 class OutputsCreate(BaseModel):
     TIMESTAMP: Optional[str] = None
     MOTOR1: int; MOTOR2: int; MOTOR3: int; MOTOR4: int
-    VERTICAL_THRUST: int
+    MOTOR5: int; MOTOR6: int; MOTOR7: int; MOTOR8: int
     S1: int; S2: int; S3: int
 
 class OutputsRead(OutputsCreate):
