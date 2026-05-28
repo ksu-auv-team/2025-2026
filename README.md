@@ -194,7 +194,6 @@ GitHub Actions runs on every push and pull request — Ruff → Black → Mypy �
 1. Branch off `main` using `<name>-<feature>` naming (e.g. `lees-hwi`).
 2. Keep commits small and focused; use imperative commit messages.
 3. Open a pull request and get at least one review before merging.
-4. All CI checks must pass.
 
 See [docs/GIT_CHEATSHEET.md](docs/GIT_CHEATSHEET.md) for the full Git workflow.
 
