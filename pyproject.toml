@@ -51,7 +51,11 @@ dependencies = [
     "plotext>=5.2",
     "watchfiles==1.1.0",
     "websockets==15.0.1",
-    "smbus2==0.6.1"
+    "smbus2==0.6.1",
+    "numpy",
+    "opencv-python",
+    "ultralytics",
+    "pyzed @ file:///home/user/pyzed-5.3-cp312-cp312-linux_aarch64.whl"
 ]
 
 [project.scripts]
