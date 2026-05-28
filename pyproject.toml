@@ -57,6 +57,18 @@ dependencies = [
 [project.scripts]
 auv = "libs.ui:main"
 
+[dependency-groups]
+dev = [
+    "pytest>=8.2",
+    "pytest-cov>=5.0",
+    "pre-commit>=3.8",
+    "ruff>=0.6.9",
+    "black>=24.10.0",
+    "isort>=5.13.2",
+    "mypy>=1.11.1",
+    "types-requests",
+]
+
 [tool.setuptools]
 packages = ["libs", "libs.db_manager", "libs.hardware_interface", "libs.movement_package", "libs.ai_package", "libs.sonar_package", "libs.camera_package"]
 package-dir = {"" = "."}
