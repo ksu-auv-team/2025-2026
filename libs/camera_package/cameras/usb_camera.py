@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 import threading
 import time
 
@@ -11,6 +12,35 @@ from libs.camera_package.detection.detector import Detection, ObjectDetector
 from libs.quick_request import AUVClient
 
 log = logging.getLogger(__name__)
+
+
+def _v4l2_device_name(index: int) -> str:
+    """Return the kernel name for /dev/videoN, or '' on error / non-Linux."""
+    if sys.platform != "linux":
+        return ""
+    try:
+        with open(f"/sys/class/video4linux/video{index}/name") as fh:
+            return fh.read().strip()
+    except OSError:
+        return ""
+
+
+def _find_safe_usb_index(start: int) -> int | None:
+    """Return the first device index >= start whose name does not contain 'zed'.
+
+    Scans up to 10 candidates. Returns None if no suitable device is found.
+    On non-Linux platforms the name check is skipped and start is returned
+    directly (OpenCV will fail to open it if the device doesn't exist).
+    """
+    for idx in range(start, start + 10):
+        name = _v4l2_device_name(idx)
+        if sys.platform == "linux" and not name:
+            continue  # device node doesn't exist
+        if "zed" in name.lower():
+            log.debug("Skipping device index %d (%s) — ZED camera", idx, name)
+            continue
+        return idx
+    return None
 
 
 def _draw(frame: np.ndarray, det: Detection, w: int, h: int) -> np.ndarray:
@@ -43,9 +73,22 @@ class UsbCamera:
         self._client = AUVClient()
 
     def run(self) -> None:
-        cap = cv2.VideoCapture(self._device)
+        safe_index = _find_safe_usb_index(self._device)
+        if safe_index is None:
+            log.error(
+                "No non-ZED USB camera found starting from device index %d", self._device
+            )
+            return
+        if safe_index != self._device:
+            log.warning(
+                "Device index %d is a ZED camera; using index %d instead",
+                self._device,
+                safe_index,
+            )
+
+        cap = cv2.VideoCapture(safe_index)
         if not cap.isOpened():
-            log.error("Failed to open USB camera (device index %d)", self._device)
+            log.error("Failed to open USB camera (device index %d)", safe_index)
             return
 
         try:
