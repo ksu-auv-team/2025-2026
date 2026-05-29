@@ -66,7 +66,10 @@ Motor and actuator commands sent to hardware.
 | MOTOR2 | INTEGER | Motor 2 PWM value |
 | MOTOR3 | INTEGER | Motor 3 PWM value |
 | MOTOR4 | INTEGER | Motor 4 PWM value |
-| VERTICAL_THRUST | INTEGER | Vertical thruster PWM value |
+| MOTOR5 | INTEGER | Motor 5 PWM value |
+| MOTOR6 | INTEGER | Motor 6 PWM value |
+| MOTOR7 | INTEGER | Motor 7 PWM value |
+| MOTOR8 | INTEGER | Motor 8 PWM value |
 | S1 | INTEGER | Servo / actuator 1 |
 | S2 | INTEGER | Servo / actuator 2 |
 | S3 | INTEGER | Servo / actuator 3 |
@@ -120,6 +123,8 @@ Battery monitoring for three battery packs.
 ## REST API Endpoints
 
 Every resource follows the same pattern. Replace `{resource}` with one of: `inputs`, `outputs`, `hydrophone`, `depth`, `imu`, `power_safety`.
+
+> **Note:** The camera package posts detections via `AUVClient.post("detections", ...)`, but a `detections` table and corresponding endpoints have not yet been added to the DB Manager. These calls will fail silently until that table is implemented.
 
 ### Create a record
 
@@ -223,14 +228,16 @@ The script inserts one row per table, reads it back via list / latest / by-id, t
 
 ## DatabaseManager API
 
-`DatabaseManager` in [libs/db_manager/database.py](../libs/db_manager/database.py) provides the low-level async helpers. The FastAPI app accesses the connection directly through `deps.get_db`, but other packages can use `DatabaseManager` standalone.
+`DatabaseManager` in [libs/db_manager/database.py](../libs/db_manager/database.py) provides the low-level async helpers. The FastAPI app accesses the connection directly through `deps.get_db`; table creation is handled by the `lifespan` in `deps.py`, not by `setup()`. Other packages can use `DatabaseManager` standalone for raw queries.
+
+> **Note:** `DatabaseManager.setup()` contains an outdated `outputs` DDL (4 motors + `VERTICAL_THRUST`). The authoritative schema is the inline DDL in `deps.py` which is what the FastAPI app actually runs. Do not call `setup()` in production — use `deps.lifespan` instead.
 
 ```python
 from libs.db_manager.database import DatabaseManager
 
 db = DatabaseManager("path/to/auv_database.db")
 await db.connect()
-await db.setup()           # creates tables if they don't exist
+# do NOT call db.setup() — schema is managed by deps.lifespan
 
 row  = await db.fetchone("SELECT * FROM depth WHERE ID = ?", (1,))
 rows = await db.fetchall("SELECT * FROM imu")
