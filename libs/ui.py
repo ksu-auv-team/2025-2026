@@ -549,14 +549,9 @@ class LogScreen(ModalScreen):
         self.set_interval(2.0, self._refresh_log)
 
     def _refresh_log(self) -> None:
-        from pathlib import Path
+        from libs.logging_config import current_log_path
 
-        from libs.config import get_env
-        from libs.logging_config import _PROJECT_ROOT
-
-        log_path = Path(get_env("AUV_LOG_PATH", default="auv.log"))
-        if not log_path.is_absolute():
-            log_path = _PROJECT_ROOT / log_path
+        log_path = current_log_path()
         try:
             lines   = log_path.read_text(encoding="utf-8").splitlines()
             content = "\n".join(lines[-300:]) or "(no log entries yet)"
