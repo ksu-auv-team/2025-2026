@@ -36,7 +36,7 @@ Software stack for the KSU Autonomous Underwater Vehicle team's 2026 RoboSub com
 
 ### Prerequisites
 
-- Python 3.10 – 3.12
+- Python ~= 3.12
 - [`uv`](https://docs.astral.sh/uv/getting-started/installation/)
 
 ### Install
