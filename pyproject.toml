@@ -55,7 +55,7 @@ dependencies = [
     "numpy",
     "opencv-python",
     "ultralytics",
-    "pyzed @ file:./pyzed-5.3-cp312-cp312-linux_aarch64.whl"
+    "pyzed"
 ]
 
 [project.scripts]
@@ -72,6 +72,9 @@ dev = [
     "mypy>=1.11.1",
     "types-requests",
 ]
+
+[tool.uv.sources]
+pyzed = { path = "pyzed-5.3-cp312-cp312-linux_aarch64.whl" }
 
 [tool.setuptools]
 packages = ["libs", "libs.db_manager", "libs.hardware_interface", "libs.movement_package", "libs.ai_package", "libs.sonar_package", "libs.camera_package"]
