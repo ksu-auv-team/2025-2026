@@ -55,7 +55,7 @@ dependencies = [
     "numpy",
     "opencv-python",
     "ultralytics",
-    "pyzed @ file:///home/user/pyzed-5.3-cp312-cp312-linux_aarch64.whl"
+    "pyzed @ file:./pyzed-5.3-cp312-cp312-linux_aarch64.whl"
 ]
 
 [project.scripts]
