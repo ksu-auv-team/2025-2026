@@ -371,7 +371,7 @@ class TelemetryPanel(VerticalScroll):
             plot.redraw()
 
 
-class ManualCommandPanel(Vertical):
+class ManualCommandPanel(VerticalScroll):
     """Bottom-right tab — numeric inputs posted as an `inputs` row."""
 
     DEFAULT_CSS = """
@@ -424,7 +424,7 @@ class ManualCommandPanel(Vertical):
         self.query_one("#cmd-ack", Static).update(ack)
 
 
-class PIDTuningPanel(Vertical):
+class PIDTuningPanel(VerticalScroll):
     """Bottom-right tab — PID gain editor."""
 
     DEFAULT_CSS = """
