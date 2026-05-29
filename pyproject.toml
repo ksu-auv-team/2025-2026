@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "ksu-auv-2025-2026"
 version = "0.1.0"
 description = "KSU AUV software (2025-2026)"
-requires-python = "3.12>=3.10"
+requires-python = "~=3.12.0"
 dependencies = [
     "aiosqlite==0.21.0",
     "annotated-types==0.7.0",
