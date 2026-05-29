@@ -549,6 +549,8 @@ class LogScreen(ModalScreen):
         self.set_interval(2.0, self._refresh_log)
 
     def _refresh_log(self) -> None:
+        from pathlib import Path
+
         from libs.config import get_env
         from libs.logging_config import _PROJECT_ROOT
 
