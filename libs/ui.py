@@ -549,14 +549,25 @@ class LogScreen(ModalScreen):
         self.set_interval(2.0, self._refresh_log)
 
     def _refresh_log(self) -> None:
-        from libs.logging_config import current_log_path
+        from libs.config import get_env
+        from libs.logging_config import _PROJECT_ROOT
 
-        log_path = current_log_path()
-        try:
-            lines   = log_path.read_text(encoding="utf-8").splitlines()
-            content = "\n".join(lines[-300:]) or "(no log entries yet)"
-        except FileNotFoundError:
-            content = f"(log file not found: {log_path})\nStart some processes first."
+        base = Path(get_env("AUV_LOG_PATH", default="auv.log"))
+        if not base.is_absolute():
+            base = _PROJECT_ROOT / base
+
+        candidates = base.parent.glob(f"{base.stem}_*{base.suffix}")
+        log_path = max(candidates, key=lambda p: p.stat().st_mtime, default=None)
+
+        if log_path is None:
+            content = "(no log files found)\nStart some processes first."
+        else:
+            try:
+                lines = log_path.read_text(encoding="utf-8").splitlines()
+                content = "\n".join(lines[-300:]) or "(no log entries yet)"
+            except OSError:
+                content = f"(could not read log file: {log_path})"
+
         self.query_one("#log-content", Static).update(content)
         self.query_one("#log-scroll", VerticalScroll).scroll_end(animate=False)
 

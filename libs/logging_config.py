@@ -12,11 +12,6 @@ _setup_lock = threading.Lock()
 _RUN_TS = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
 
-def current_log_path() -> Path:
-    """Return the resolved log file path including the run timestamp."""
-    return _log_path()
-
-
 def _log_path() -> Path:
     raw = get_env("AUV_LOG_PATH", default="auv.log")
     p = Path(raw)
