@@ -107,51 +107,53 @@ class MovementPackage:
 
     def _parse_outputs(self) -> Dict[str, Union[int, float, bool]]:
         """
-        @brief Generate output data (unscaled) based on parsed inputs and PID results.
-        @return The unscaled output dict with keys exactly matching the Outputs schema.
+        @brief Generate output data scaled to 0-255 based on DB inputs and Mixing Matrix.
+        @return The scaled output dict matching the exact Outputs database schema.
         """
         if not self.parsed_inputs:
             self.logger.warning("No parsed inputs available.")
             return self.combined_output
 
-        if bool(self.parsed_inputs["arm"]):
-            # Compute PID outputs in normalized space
-            self.PID.update_motors(
-                x=float(self.parsed_inputs["x"]),
-                y=float(self.parsed_inputs["y"]),
-                z=float(self.parsed_inputs["z"]),
-                yaw=float(self.parsed_inputs["yaw"])
-            )
+        if bool(self.parsed_inputs.get("Arm", False)):
+            
+            # Translate inputs from DB space (0 to 100) to local normalized space (-1.0 to 1.0)
+            norm_x   = map(float(self.parsed_inputs.get("X", 50)), 0, 100, -1.0, 1.0)
+            norm_y   = map(float(self.parsed_inputs.get("Y", 50)), 0, 100, -1.0, 1.0)
+            norm_z   = map(float(self.parsed_inputs.get("Z", 50)), 0, 100, -1.0, 1.0)
+            norm_yaw = map(float(self.parsed_inputs.get("Yaw", 50)), 0, 100, -1.0, 1.0)
 
-            motors = self._pid_flat()
-            # Servos are mirrored from PID.servos; adapt to your linkage as needed.
-            try:
-                s1, s2, s3 = self.PID.servos.tolist()
-            except Exception:
-                s1 = s2 = s3 = 0.0
+            #Pass normalized values to surface PID tracking if needed
+            self.PID.update_motors(x=norm_x, y=norm_y, z=norm_z, yaw=norm_yaw)
 
+            # Matrix multiplication
+            control_vector = np.array([norm_x, norm_y, norm_z, norm_yaw])
+            mixed_outputs = np.dot(self.mixing_matrix, control_vector)
+            clamped_outputs = np.clip(mixed_outputs, -1.0, 1.0)
+
+            # Map the servo states to 0-255 outputs
+            s1_out = 255 if self.parsed_inputs.get("S1", False) else 0
+            s2_out = 255 if self.parsed_inputs.get("S2", False) else 0
+            s3_out = int(map(float(self.parsed_inputs.get("S3", 50)), 0, 100, 0, 255))
+
+            # Output to match the DB manager
             self.combined_output = {
-                "step_index": int(self.parsed_inputs["step_index"]),
-                "M1": map(motors[0], -1, 1, 0, 255), "M2": map(motors[1], -1, 1, 0, 255), "M3": map(motors[2], -1, 1, 0, 255), "M4": map(motors[3], -1, 1, 0, 255),
-                "M5": map(motors[4], -1, 1, 0, 255), "M6": map(motors[5], -1, 1, 0, 255), "M7": map(motors[6], -1, 1, 0, 255), "M8": map(motors[7], -1, 1, 0, 255),
-                "S1": s1, "S2": s2, "S3": s3,
-                "arm": True
+                "M1": self._scale_to_u8(clamped_outputs[0]),
+                "M2": self._scale_to_u8(clamped_outputs[1]),
+                "M3": self._scale_to_u8(clamped_outputs[2]),
+                "M4": self._scale_to_u8(clamped_outputs[3]),
+                "V":  self._scale_to_u8(clamped_outputs[4]),  # Combined vertical path
+                "S1": s1_out,
+                "S2": s2_out,
+                "S3": s3_out
             }
-
-            # Sanity check in normalized space (before optional scaling)
-            # self._sanity_check_ranges()
 
         else:
-            # Disarmed → zeros
+            # Disarmed state
             self.combined_output = {
-                "step_index": 0,
-                "M1": int(127), "M2": int(127), "M3": int(127), "M4": int(127),
-                "M5": int(127), "M6": int(127), "M7": int(127), "M8": int(127),
-                "S1": int(127), "S2": int(127), "S3": int(127),
-                "arm": False
+                "M1": 127, "M2": 127, "M3": 127, "M4": 127, "V": 127,
+                "S1": 0, "S2": 0, "S3": 127
             }
 
-        # Return the unscaled dict (caller may log or scale right before POST)
         return self.combined_output
 
     def _updateDB(self) -> None:
