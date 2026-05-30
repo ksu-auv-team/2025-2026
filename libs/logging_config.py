@@ -1,20 +1,23 @@
 import logging
-import logging.handlers
 import threading
+from datetime import datetime
 from pathlib import Path
 
 from libs.config import get_env
 
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _FORMAT = "%(asctime)s  [%(process_label)s]  %(levelname)-8s  %(message)s"
 _DATE = "%Y-%m-%d %H:%M:%S"
 _setup_lock = threading.Lock()
+_RUN_TS = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
 
 def _log_path() -> Path:
     raw = get_env("AUV_LOG_PATH", default="auv.log")
     p = Path(raw)
-    return p if p.is_absolute() else _PROJECT_ROOT / p
+    if not p.is_absolute():
+        p = _PROJECT_ROOT / p
+    return p.with_stem(f"{p.stem}_{_RUN_TS}")
 
 
 def setup_logging(process_label: str) -> None:
@@ -35,12 +38,9 @@ def setup_logging(process_label: str) -> None:
             record.process_label = process_label  # type: ignore[attr-defined]
             return True
 
-    handler = logging.handlers.RotatingFileHandler(
-        _log_path(),
-        maxBytes=2_000_000,
-        backupCount=5,
-        encoding="utf-8",
-    )
+    log_path = _log_path()
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    handler = logging.FileHandler(log_path, encoding="utf-8")
     handler.setFormatter(logging.Formatter(_FORMAT, datefmt=_DATE))
     handler.addFilter(_LabelFilter())
     root.addHandler(handler)

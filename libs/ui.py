@@ -371,7 +371,7 @@ class TelemetryPanel(VerticalScroll):
             plot.redraw()
 
 
-class ManualCommandPanel(Vertical):
+class ManualCommandPanel(VerticalScroll):
     """Bottom-right tab — numeric inputs posted as an `inputs` row."""
 
     DEFAULT_CSS = """
@@ -424,7 +424,7 @@ class ManualCommandPanel(Vertical):
         self.query_one("#cmd-ack", Static).update(ack)
 
 
-class PIDTuningPanel(Vertical):
+class PIDTuningPanel(VerticalScroll):
     """Bottom-right tab — PID gain editor."""
 
     DEFAULT_CSS = """
@@ -554,14 +554,22 @@ class LogScreen(ModalScreen):
         from libs.config import get_env
         from libs.logging_config import _PROJECT_ROOT
 
-        log_path = Path(get_env("AUV_LOG_PATH", default="auv.log"))
-        if not log_path.is_absolute():
-            log_path = _PROJECT_ROOT / log_path
-        try:
-            lines   = log_path.read_text(encoding="utf-8").splitlines()
-            content = "\n".join(lines[-300:]) or "(no log entries yet)"
-        except FileNotFoundError:
-            content = f"(log file not found: {log_path})\nStart some processes first."
+        base = Path(get_env("AUV_LOG_PATH", default="auv.log"))
+        if not base.is_absolute():
+            base = _PROJECT_ROOT / base
+
+        candidates = base.parent.glob(f"{base.stem}_*{base.suffix}")
+        log_path = max(candidates, key=lambda p: p.stat().st_mtime, default=None)
+
+        if log_path is None:
+            content = "(no log files found)\nStart some processes first."
+        else:
+            try:
+                lines = log_path.read_text(encoding="utf-8").splitlines()
+                content = "\n".join(lines[-300:]) or "(no log entries yet)"
+            except OSError:
+                content = f"(could not read log file: {log_path})"
+
         self.query_one("#log-content", Static).update(content)
         self.query_one("#log-scroll", VerticalScroll).scroll_end(animate=False)
 
