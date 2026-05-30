@@ -32,7 +32,7 @@ import numpy as np
 # ─────────────────────────────────────────────
 CONFIG = {
     # Paths
-    "pdf_path":         "/Users/michael/Documents/Projects/2025-2026/Robosub_Emojies.pdf",
+    "pdf_path":         "/Users/user/2025-2026/Robosub_Emojies.pdf",
     "emoji_dir":        "model_training/emojis/emoji_assets",
     "bg_dir":           "model_training/emojis/backgrounds",
     "dataset_dir":      "model_training/emojis/dataset",
