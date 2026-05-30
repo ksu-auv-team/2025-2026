@@ -48,10 +48,10 @@ def _draw(frame: np.ndarray, det: Detection, w: int, h: int) -> np.ndarray:
     y1 = int(det.bbox_y * h)
     x2 = int((det.bbox_x + det.bbox_w) * w)
     y2 = int((det.bbox_y + det.bbox_h) * h)
-    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 0), 2)
+    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 255), 2)
     label = f"{det.class_name} {det.confidence:.2f}"
     cv2.putText(
-        frame, label, (x1, max(y1 - 5, 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1
+        frame, label, (x1, max(y1 - 5, 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1
     )
     return frame
 
