@@ -101,7 +101,7 @@ class UsbCamera:
 
                 h, w = frame.shape[:2]
                 for det in self._detector.detect(frame):
-                    log.info("Detected %s (%.0f%%)", det.class_name, det.confidence * 100)
+                    # log.info("Detected %s (%.0f%%)", det.class_name, det.confidence * 100)
                     self._post(det)
                     frame = _draw(frame, det, w, h)
 

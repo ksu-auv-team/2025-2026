@@ -90,10 +90,10 @@ class ZedCamera:
                     err, val = depth_mat.get_value(cx, cy)
                     raw = float(val[0]) if hasattr(val, "__len__") else float(val)
                     distance = raw if err == sl.ERROR_CODE.SUCCESS and np.isfinite(raw) else -1.0
-                    if distance >= 0:
-                        log.info("Detected %s (%.0f%%) at %.2fm", det.class_name, det.confidence * 100, distance)
-                    else:
-                        log.info("Detected %s (%.0f%%) — distance unavailable", det.class_name, det.confidence * 100)
+                    # if distance >= 0:
+                    #     log.info("Detected %s (%.0f%%) at %.2fm", det.class_name, det.confidence * 100, distance)
+                    # else:
+                    #     log.info("Detected %s (%.0f%%) — distance unavailable", det.class_name, det.confidence * 100)
                     self._post(det, distance)
                     frame = _draw(frame, det, distance, w, h)
 
