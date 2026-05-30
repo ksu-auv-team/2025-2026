@@ -107,10 +107,34 @@ def extract_emojis(pdf_path: str, output_dir: str) -> list:
 # ─────────────────────────────────────────────
 # STEP 2 — CRAWL BACKGROUND IMAGES
 # ─────────────────────────────────────────────
+def _generate_procedural_backgrounds(bg_dir: str, count: int = 20) -> None:
+    """Generate simple procedural underwater-style backgrounds as a crawl fallback."""
+    print(f"  [crawl] Generating {count} procedural underwater backgrounds as fallback...")
+    rng = np.random.default_rng(42)
+    for i in range(count):
+        h, w = 640, 640
+        # Base underwater gradient: dark teal/blue tones
+        base_b = rng.integers(120, 200)
+        base_g = rng.integers(80, 160)
+        base_r = rng.integers(10, 60)
+        img = np.zeros((h, w, 3), dtype=np.uint8)
+        for row in range(h):
+            t = row / h
+            img[row, :] = [
+                int(base_b * (1 - t * 0.4)),
+                int(base_g * (1 - t * 0.3)),
+                int(base_r * (1 - t * 0.2)),
+            ]
+        # Add subtle noise for texture
+        noise = rng.integers(-15, 15, (h, w, 3), dtype=np.int16)
+        img = np.clip(img.astype(np.int16) + noise, 0, 255).astype(np.uint8)
+        cv2.imwrite(str(Path(bg_dir) / f"procedural_{i:03d}.jpg"), img)
+
+
 def crawl_backgrounds(bg_dir: str, keywords: list, per_keyword: int) -> None:
-    """Download background images via icrawler (Google Images)."""
+    """Download background images via icrawler (Bing Images)."""
     try:
-        from icrawler.builtin import GoogleImageCrawler
+        from icrawler.builtin import BingImageCrawler
     except ImportError:
         raise ImportError("Run: pip install icrawler")
 
@@ -120,7 +144,7 @@ def crawl_backgrounds(bg_dir: str, keywords: list, per_keyword: int) -> None:
         safe_kw = kw.replace(" ", "_")
         save_dir = str(Path(bg_dir) / safe_kw)
         print(f"  [crawl] Searching: '{kw}' -> {save_dir}")
-        crawler = GoogleImageCrawler(
+        crawler = BingImageCrawler(
             storage={"root_dir": save_dir},
             log_level=50,  # suppress icrawler noise
         )
@@ -129,13 +153,11 @@ def crawl_backgrounds(bg_dir: str, keywords: list, per_keyword: int) -> None:
     # Flatten all crawled images into bg_dir root for easy loading
     all_imgs = list(Path(bg_dir).rglob("*.jpg")) + list(Path(bg_dir).rglob("*.png"))
     flat_dir = Path(bg_dir)
-    moved = 0
     for img in all_imgs:
         if img.parent != flat_dir:
             dest = flat_dir / img.name
             if not dest.exists():
                 shutil.move(str(img), str(dest))
-                moved += 1
 
     # Clean up empty subdirs
     for d in [p for p in flat_dir.iterdir() if p.is_dir()]:
@@ -145,6 +167,10 @@ def crawl_backgrounds(bg_dir: str, keywords: list, per_keyword: int) -> None:
             pass
 
     total = len(list(flat_dir.glob("*.jpg"))) + len(list(flat_dir.glob("*.png")))
+    if total == 0:
+        print("  [crawl] Warning: no images downloaded, falling back to procedural backgrounds")
+        _generate_procedural_backgrounds(bg_dir)
+        total = len(list(flat_dir.glob("*.jpg")))
     print(f"  [crawl] {total} background images available in '{bg_dir}'")
 
 
@@ -220,7 +246,13 @@ def generate_dataset(emoji_dir, bg_dir, dataset_dir, class_names, cfg):
         + list(Path(bg_dir).glob("*.png"))
     )
     if not bg_paths:
-        raise FileNotFoundError(f"No background images found in '{bg_dir}'. Run crawl first.")
+        print(f"  [generate] No backgrounds in '{bg_dir}', generating procedural ones...")
+        _generate_procedural_backgrounds(bg_dir)
+        bg_paths = (
+            list(Path(bg_dir).glob("*.jpg"))
+            + list(Path(bg_dir).glob("*.jpeg"))
+            + list(Path(bg_dir).glob("*.png"))
+        )
     print(f"  [generate] Found {len(bg_paths)} background images")
 
     augment   = _build_augmentation_pipeline()
