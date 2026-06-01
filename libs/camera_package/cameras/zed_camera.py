@@ -50,6 +50,27 @@ class ZedCamera:
         self._detector = detector
         self._client = AUVClient()
 
+        # Detection runs in a background thread; these share state with the capture loop.
+        self._pending: np.ndarray | None = None
+        self._pending_cond = threading.Condition()
+        self._last_dets: list[Detection] = []
+        self._new_dets = False
+        self._dets_lock = threading.Lock()
+
+    def _detect_worker(self) -> None:
+        while not self._stop.is_set():
+            with self._pending_cond:
+                while self._pending is None and not self._stop.is_set():
+                    self._pending_cond.wait(timeout=0.1)
+                frame = self._pending
+                self._pending = None
+            if frame is None:
+                continue
+            dets = self._detector.detect(frame)
+            with self._dets_lock:
+                self._last_dets = dets
+                self._new_dets = True
+
     def run(self) -> None:
         if not _ZED_AVAILABLE:
             log.error("pyzed not available; ZED thread exiting")
@@ -70,6 +91,9 @@ class ZedCamera:
         img_mat = sl.Mat()
         depth_mat = sl.Mat()
 
+        det_thread = threading.Thread(target=self._detect_worker, name="zed-detect", daemon=True)
+        det_thread.start()
+
         try:
             while not self._stop.is_set():
                 if zed.grab(runtime) != sl.ERROR_CODE.SUCCESS:
@@ -83,25 +107,31 @@ class ZedCamera:
                 frame = cv2.cvtColor(img_mat.get_data(), cv2.COLOR_BGRA2BGR)
                 h, w = frame.shape[:2]
 
-                for det in self._detector.detect(frame):
+                # Submit frame to detector only when the worker is free (drop otherwise)
+                with self._pending_cond:
+                    if self._pending is None:
+                        self._pending = frame.copy()
+                        self._pending_cond.notify()
+
+                # Draw last known detections using the current depth frame
+                with self._dets_lock:
+                    current_dets = list(self._last_dets)
+                    is_new = self._new_dets
+                    self._new_dets = False
+
+                for det in current_dets:
                     cx = int((det.bbox_x + det.bbox_w / 2) * w)
                     cy = int((det.bbox_y + det.bbox_h / 2) * h)
-                    # get_value returns (ERROR_CODE, np.ndarray)
                     err, val = depth_mat.get_value(cx, cy)
                     raw = float(val[0]) if hasattr(val, "__len__") else float(val)
                     distance = raw if err == sl.ERROR_CODE.SUCCESS and np.isfinite(raw) else -1.0
-                    # if distance >= 0:
-                    #     log.info("Detected %s (%.0f%%) at %.2fm", det.class_name, det.confidence * 100, distance)
-                    # else:
-                    #     log.info("Detected %s (%.0f%%) — distance unavailable", det.class_name, det.confidence * 100)
-                    self._post(det, distance)
+                    if is_new:
+                        self._post(det, distance)
                     frame = _draw(frame, det, distance, w, h)
 
                 _, jpeg = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 75])
                 with self._lock:
                     self._buf["zed"] = jpeg.tobytes()
-
-                time.sleep(0.033)
         finally:
             zed.close()
             self._client.close()
