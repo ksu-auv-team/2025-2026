@@ -57,8 +57,8 @@ class ZedCamera:
 
         zed = sl.Camera()
         init = sl.InitParameters()
-        init.camera_resolution = sl.RESOLUTION.HD720
-        init.depth_mode = sl.DEPTH_MODE.PERFORMANCE
+        init.camera_resolution = sl.RESOLUTION.HD1080
+        init.depth_mode = sl.DEPTH_MODE.QUALITY
         init.coordinate_units = sl.UNIT.METER
         init.depth_maximum_distance = 20.0
 
