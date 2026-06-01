@@ -61,14 +61,14 @@ CONFIG = {
     "output_size":      (640, 640),
     "images_per_bg":    5,      # synthetic images produced per background
     "max_emojis_per_img": 4,    # max emoji instances pasted per image
-    "emoji_scale_min":  0.08,   # relative to output_size (tune for real camera distance)
+    "emoji_scale_min":  0.02,   # relative to output_size (~13px at 640 ≈ 3-4 m range)
     "emoji_scale_max":  0.35,
 
     # Train / val split
     "val_split":        0.1,    # 10% of generated images go to val
 
     # YOLOv8 training settings
-    "yolo_model":       "yolov8n.pt",   # nano; swap for yolov8s.pt for better accuracy
+    "yolo_model":       "yolov8s.pt",   # small; better small-object detection than nano
     "epochs":           50,
     "imgsz":            640,
     "batch":            16,
@@ -357,6 +357,7 @@ def train_model(yaml_path, cfg):
         project="runs/robosub_emoji",
         name="train",
         exist_ok=True,
+        multi_scale=True,
     )
     print("\n  [train] Training complete. Results saved to runs/robosub_emoji/train/")
 
