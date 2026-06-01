@@ -79,8 +79,8 @@ class ZedCamera:
                 zed.retrieve_image(img_mat, sl.VIEW.LEFT)
                 zed.retrieve_measure(depth_mat, sl.MEASURE.DEPTH)
 
-                # get_data() returns RGBA; convert to BGR for OpenCV/YOLO
-                frame = cv2.cvtColor(img_mat.get_data(), cv2.COLOR_RGBA2BGR)
+                # get_data() returns BGRA; convert to BGR for OpenCV/YOLO
+                frame = cv2.cvtColor(img_mat.get_data(), cv2.COLOR_BGRA2BGR)
                 h, w = frame.shape[:2]
 
                 for det in self._detector.detect(frame):
