@@ -47,29 +47,41 @@ CONFIG = {
         "blood_drop",
     ],
 
+    # Per-class sampling weights — higher = more examples generated.
+    # Indices match class_names above:
+    #   compass=0, hammers=1, life_preserver=2, sos=3, fire=4, blood_drop=5
+    # Hammers/fire/blood_drop were the weakest classes in v2, so oversample them.
+    "class_weights": [1.0, 3.0, 1.0, 1.5, 2.5, 2.5],
+
     # Background crawl settings
     "bg_keywords": [
+        # Underwater pool / ocean — original
         "underwater pool floor",
         "underwater swimming pool",
         "ocean floor underwater",
         "underwater blue water",
         "pool underwater clear",
+        # Structural / non-water — added for diversity
+        "underwater concrete wall",
+        "swimming pool lane markers",
+        "underwater pipe structure",
     ],
     "bg_per_keyword":   40,     # images crawled per keyword
 
     # Synthetic generation settings
     "output_size":      (640, 640),
-    "images_per_bg":    5,      # synthetic images produced per background
+    "images_per_bg":    12,     # was 5 — more images per background
     "max_emojis_per_img": 4,    # max emoji instances pasted per image
     "emoji_scale_min":  0.02,   # relative to output_size (~13px at 640 ≈ 3-4 m range)
     "emoji_scale_max":  0.35,
+    "hard_negative_ratio": 0.10,  # fraction of images generated with NO emojis (hard negatives)
 
     # Train / val split
     "val_split":        0.1,    # 10% of generated images go to val
 
     # YOLOv8 training settings
     "yolo_model":       "yolov8s.pt",   # small; better small-object detection than nano
-    "epochs":           50,
+    "epochs":           100,    # was 50 — v2 curves showed plateau around epoch 38, more headroom
     "imgsz":            640,
     "batch":            16,
     "device":           "",     # "" = auto-detect (GPU if available, else CPU)
@@ -177,6 +189,36 @@ def crawl_backgrounds(bg_dir: str, keywords: list, per_keyword: int) -> None:
 # ─────────────────────────────────────────────
 # STEP 3 — SYNTHETIC IMAGE GENERATION
 # ─────────────────────────────────────────────
+def _rotate_emoji(emoji_rgba, angle):
+    """Rotate an RGBA emoji by angle degrees, expanding the canvas to fit."""
+    h, w = emoji_rgba.shape[:2]
+    cx, cy = w / 2.0, h / 2.0
+    M = cv2.getRotationMatrix2D((cx, cy), angle, 1.0)
+    cos_a = abs(M[0, 0])
+    sin_a = abs(M[0, 1])
+    new_w = int(h * sin_a + w * cos_a)
+    new_h = int(h * cos_a + w * sin_a)
+    M[0, 2] += new_w / 2.0 - cx
+    M[1, 2] += new_h / 2.0 - cy
+    return cv2.warpAffine(
+        emoji_rgba, M, (new_w, new_h),
+        flags=cv2.INTER_LINEAR,
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=(0, 0, 0, 0),
+    )
+
+
+def _iou(a, b):
+    """IoU between two (x, y, w, h) pixel boxes."""
+    ax2, ay2 = a[0] + a[2], a[1] + a[3]
+    bx2, by2 = b[0] + b[2], b[1] + b[3]
+    inter_w = max(0, min(ax2, bx2) - max(a[0], b[0]))
+    inter_h = max(0, min(ay2, by2) - max(a[1], b[1]))
+    inter = inter_w * inter_h
+    union = a[2] * a[3] + b[2] * b[3] - inter
+    return inter / union if union > 0 else 0.0
+
+
 def _paste_emoji(bg, emoji_rgba, x, y, scale):
     """Alpha-blend a scaled emoji onto bg at (x, y). Returns (x, y, w, h) or None."""
     h, w = emoji_rgba.shape[:2]
@@ -207,6 +249,7 @@ def _build_augmentation_pipeline():
     return A.Compose([
         A.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3, p=0.6),
         A.GaussianBlur(blur_limit=(3, 5), p=0.3),
+        A.MotionBlur(blur_limit=(3, 7), p=0.2),   # simulates camera movement underwater
         A.GaussNoise(var_limit=(10, 50), p=0.3),
         A.HueSaturationValue(hue_shift_limit=15, sat_shift_limit=30, val_shift_limit=20, p=0.5),
         A.RandomFog(fog_coef_range=(0.1, 0.3), alpha_coef=0.1, p=0.25),   # simulates murky water
@@ -218,13 +261,20 @@ def _build_augmentation_pipeline():
 
 def generate_dataset(emoji_dir, bg_dir, dataset_dir, class_names, cfg):
     """Generate synthetic images with YOLO-format labels."""
-    output_size  = cfg["output_size"]
-    imgs_per_bg  = cfg["images_per_bg"]
-    max_per_img  = cfg["max_emojis_per_img"]
-    scale_min    = cfg["emoji_scale_min"]
-    scale_max    = cfg["emoji_scale_max"]
-    val_split    = cfg["val_split"]
-    num_classes  = len(class_names)
+    output_size       = cfg["output_size"]
+    imgs_per_bg       = cfg["images_per_bg"]
+    max_per_img       = cfg["max_emojis_per_img"]
+    scale_min         = cfg["emoji_scale_min"]
+    scale_max         = cfg["emoji_scale_max"]
+    val_split         = cfg["val_split"]
+    hard_neg_ratio    = cfg.get("hard_negative_ratio", 0.0)
+    num_classes       = len(class_names)
+
+    # Build weighted class sampling distribution
+    raw_weights  = cfg.get("class_weights", [1.0] * num_classes)
+    raw_weights  = raw_weights[:num_classes]  # trim to actual class count
+    weight_total = sum(raw_weights)
+    class_probs  = [w / weight_total for w in raw_weights]
 
     # Output dirs
     for split in ("train", "val"):
@@ -267,25 +317,38 @@ def generate_dataset(emoji_dir, bg_dir, dataset_dir, class_names, cfg):
         for _ in range(imgs_per_bg):
             bg          = bg_orig.copy()
             yolo_labels = []
-            num_emojis  = random.randint(1, max_per_img)
+            placed_boxes = []  # pixel (x, y, w, h) of already-placed emojis
+
+            # Hard negatives: some images intentionally have no emojis
+            is_hard_negative = random.random() < hard_neg_ratio
+            num_emojis = 0 if is_hard_negative else random.randint(1, max_per_img)
 
             for _ in range(num_emojis):
-                class_id = random.randint(0, len(emojis) - 1)
+                class_id = random.choices(range(len(emojis)), weights=class_probs)[0]
                 emoji    = emojis[class_id]
                 if emoji is None:
                     continue
 
+                # Rotate the emoji before pasting (full 360° for orientation robustness)
+                angle         = random.uniform(0, 360)
+                emoji_rotated = _rotate_emoji(emoji, angle)
+
                 scale = random.uniform(scale_min, scale_max)
-                max_x = output_size[0] - int(emoji.shape[1] * scale)
-                max_y = output_size[1] - int(emoji.shape[0] * scale)
+                max_x = output_size[0] - int(emoji_rotated.shape[1] * scale)
+                max_y = output_size[1] - int(emoji_rotated.shape[0] * scale)
                 if max_x <= 0 or max_y <= 0:
                     continue
 
                 x    = random.randint(0, max_x)
                 y    = random.randint(0, max_y)
-                bbox = _paste_emoji(bg, emoji, x, y, scale)
+                bbox = _paste_emoji(bg, emoji_rotated, x, y, scale)
                 if bbox is None:
                     continue
+
+                # Skip this annotation if it heavily overlaps an existing one
+                if any(_iou(bbox, prev) > 0.4 for prev in placed_boxes):
+                    continue
+                placed_boxes.append(bbox)
 
                 bx, by, bw, bh = bbox
                 cx = (bx + bw / 2) / output_size[0]
