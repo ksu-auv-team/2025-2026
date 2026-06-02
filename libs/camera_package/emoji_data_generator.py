@@ -339,15 +339,19 @@ names:
 # ─────────────────────────────────────────────
 # STEP 5 — TRAIN WITH YOLOV8
 # ─────────────────────────────────────────────
-def train_model(yaml_path, cfg):
-    """Kick off YOLOv8 training."""
+def train_model(yaml_path, cfg, base_model: str | None = None):
+    """Kick off YOLOv8 training.
+
+    base_model: path to a previous best.pt to fine-tune from, or None to use cfg["yolo_model"].
+    """
     try:
         from ultralytics import YOLO
     except ImportError:
         raise ImportError("Run: pip install ultralytics")
 
-    print(f"\n  [train] Starting YOLOv8 training on '{yaml_path}'")
-    model = YOLO(cfg["yolo_model"])
+    checkpoint = base_model or cfg["yolo_model"]
+    print(f"\n  [train] Starting YOLOv8 training on '{yaml_path}' (base: {checkpoint})")
+    model = YOLO(checkpoint)
     model.train(
         data=yaml_path,
         epochs=cfg["epochs"],
@@ -369,11 +373,17 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="RoboSub Emoji Dataset Generator & YOLOv8 Trainer"
     )
-    parser.add_argument("--pdf",      default=CONFIG["pdf_path"],  help="Path to emoji PDF")
-    parser.add_argument("--crawl",    action="store_true",         help="Crawl background images")
-    parser.add_argument("--generate", action="store_true",         help="Generate synthetic dataset")
-    parser.add_argument("--train",    action="store_true",         help="Train YOLOv8 model")
-    parser.add_argument("--all",      action="store_true",         help="Run all steps end-to-end")
+    parser.add_argument("--pdf",        default=CONFIG["pdf_path"],  help="Path to emoji PDF")
+    parser.add_argument("--crawl",      action="store_true",         help="Crawl background images")
+    parser.add_argument("--generate",   action="store_true",         help="Generate synthetic dataset")
+    parser.add_argument("--train",      action="store_true",         help="Train YOLOv8 model")
+    parser.add_argument("--all",        action="store_true",         help="Run all steps end-to-end")
+    parser.add_argument(
+        "--base-model",
+        default=None,
+        metavar="PATH",
+        help="Path to a previous best.pt to fine-tune from (default: use yolo_model in CONFIG)",
+    )
     return parser.parse_args()
 
 
@@ -417,7 +427,7 @@ def main():
 
     if do_train:
         print("\n[STEP 5] Training YOLOv8...")
-        train_model(yaml_path, CONFIG)
+        train_model(yaml_path, CONFIG, base_model=args.base_model)
 
     if not any([do_extract, do_crawl, do_generate, do_train]):
         print("Nothing to do. Pass --crawl, --generate, --train, or --all.")
