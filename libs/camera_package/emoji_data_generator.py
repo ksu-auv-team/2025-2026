@@ -83,7 +83,7 @@ CONFIG = {
     "yolo_model":       "yolov8s.pt",   # small; better small-object detection than nano
     "epochs":           100,    # was 50 — v2 curves showed plateau around epoch 38, more headroom
     "imgsz":            640,
-    "batch":            16,
+    "batch":            32,
     "device":           "",     # "" = auto-detect (GPU if available, else CPU)
 }
 
