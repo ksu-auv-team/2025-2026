@@ -87,6 +87,41 @@ CONFIG = {
     "device":           "",     # "" = auto-detect (GPU if available, else CPU)
 }
 
+# Distance-range profiles — merged over CONFIG at generation time.
+# "close" mirrors the existing defaults (1-3 m); "far" targets 6-7 m.
+#
+# Scale reasoning (object ~30 cm across, ZED 2i at 640 px wide):
+#   1 m  → ~0.20-0.35  (128-224 px)
+#   3 m  → ~0.07-0.12  ( 45- 77 px)   ← current scale_max covers this
+#   6 m  → ~0.03-0.06  ( 19- 38 px)
+#   7 m  → ~0.01-0.04  (  6- 26 px)
+#
+# At 6-7 m the water column also blurs, attenuates contrast, and adds more
+# turbidity — hence the tighter fog/blur parameters in the far profile.
+RANGE_PROFILES = {
+    "close": {
+        "range_profile":       "close",
+        "emoji_scale_min":     0.02,
+        "emoji_scale_max":     0.35,
+        "dataset_dir":         "model_training/emojis/dataset",
+        "hard_negative_ratio": 0.10,
+        "max_emojis_per_img":  4,
+    },
+    "far": {
+        "range_profile":       "far",
+        # Emojis at 6-7 m: roughly 6-38 px wide in a 640-px frame
+        "emoji_scale_min":     0.01,
+        "emoji_scale_max":     0.06,
+        "dataset_dir":         "model_training/emojis/dataset_far",
+        # Harder to see at distance → more hard-negative training pressure
+        "hard_negative_ratio": 0.15,
+        # Smaller emojis pack more instances per frame
+        "max_emojis_per_img":  8,
+        # More images per background to compensate for the harder task
+        "images_per_bg":       20,
+    },
+}
+
 
 # ─────────────────────────────────────────────
 # STEP 1 — EXTRACT EMOJIS FROM PDF
@@ -239,22 +274,43 @@ def _paste_emoji(bg, emoji_rgba, x, y, scale):
     return (x, y, new_w, new_h)
 
 
-def _build_augmentation_pipeline():
-    """Return an Albumentations augmentation pipeline."""
+def _build_augmentation_pipeline(cfg: dict | None = None):
+    """Return an Albumentations augmentation pipeline.
+
+    When cfg["range_profile"] == "far", use heavier blur, fog, noise, and
+    compression to simulate the water-column degradation at 6-7 m.
+    """
     try:
         import albumentations as A
     except ImportError:
         raise ImportError("Run: pip install albumentations")
 
+    is_far = (cfg or {}).get("range_profile") == "far"
+
+    # Gaussian blur: wider kernel + higher probability at far range
+    gblur_limit = (3, 9)  if is_far else (3, 5)
+    gblur_p     = 0.50    if is_far else 0.30
+    # Motion blur: longer streaks at far range (AUV micro-movements matter more)
+    mblur_limit = (3, 11) if is_far else (3, 7)
+    mblur_p     = 0.35    if is_far else 0.20
+    # Gaussian noise: stronger sensor noise at low contrast
+    noise_var   = (20, 80) if is_far else (10, 50)
+    noise_p     = 0.40     if is_far else 0.30
+    # Fog / turbidity: heavier and more frequent at distance
+    fog_coef    = (0.2, 0.5) if is_far else (0.1, 0.3)
+    fog_p       = 0.45       if is_far else 0.25
+    # JPEG compression: more block artifacts simulate long-range stream quality
+    comp_qual   = (55, 85) if is_far else (70, 95)
+
     return A.Compose([
         A.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3, p=0.6),
-        A.GaussianBlur(blur_limit=(3, 5), p=0.3),
-        A.MotionBlur(blur_limit=(3, 7), p=0.2),   # simulates camera movement underwater
-        A.GaussNoise(var_limit=(10, 50), p=0.3),
+        A.GaussianBlur(blur_limit=gblur_limit, p=gblur_p),
+        A.MotionBlur(blur_limit=mblur_limit, p=mblur_p),
+        A.GaussNoise(var_limit=noise_var, p=noise_p),
         A.HueSaturationValue(hue_shift_limit=15, sat_shift_limit=30, val_shift_limit=20, p=0.5),
-        A.RandomFog(fog_coef_range=(0.1, 0.3), alpha_coef=0.1, p=0.25),   # simulates murky water
+        A.RandomFog(fog_coef_range=fog_coef, alpha_coef=0.1, p=fog_p),
         A.RandomShadow(num_shadows_limit=(1, 2), p=0.2),
-        A.ImageCompression(quality_range=(70, 95), p=0.3),
+        A.ImageCompression(quality_range=comp_qual, p=0.3),
         A.Rotate(limit=15, p=0.4),
     ])
 
@@ -305,7 +361,7 @@ def generate_dataset(emoji_dir, bg_dir, dataset_dir, class_names, cfg):
         )
     print(f"  [generate] Found {len(bg_paths)} background images")
 
-    augment   = _build_augmentation_pipeline()
+    augment   = _build_augmentation_pipeline(cfg)
     img_count = 0
 
     for bg_path in bg_paths:
@@ -447,6 +503,17 @@ def parse_args():
         metavar="PATH",
         help="Path to a previous best.pt to fine-tune from (default: use yolo_model in CONFIG)",
     )
+    parser.add_argument(
+        "--range",
+        choices=["close", "far", "all"],
+        default="close",
+        help=(
+            "Distance profile for dataset generation: "
+            "'close' = 1-3 m (current behaviour, scale 0.02-0.35), "
+            "'far' = 6-7 m (small emojis + heavy water effects, scale 0.01-0.06), "
+            "'all' = generate both datasets back-to-back."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -477,16 +544,19 @@ def main():
         )
 
     if do_generate:
-        print("\n[STEP 3] Generating synthetic dataset...")
-        generate_dataset(
-            CONFIG["emoji_dir"],
-            CONFIG["bg_dir"],
-            CONFIG["dataset_dir"],
-            CONFIG["class_names"],
-            CONFIG,
-        )
-        print("\n[STEP 4] Writing dataset.yaml...")
-        yaml_path = write_dataset_yaml(CONFIG["dataset_dir"], CONFIG["class_names"])
+        ranges = list(RANGE_PROFILES.keys()) if args.range == "all" else [args.range]
+        for r in ranges:
+            merged_cfg = {**CONFIG, **RANGE_PROFILES[r]}
+            print(f"\n[STEP 3] Generating synthetic dataset (range: {r})...")
+            generate_dataset(
+                CONFIG["emoji_dir"],
+                CONFIG["bg_dir"],
+                merged_cfg["dataset_dir"],
+                CONFIG["class_names"],
+                merged_cfg,
+            )
+            print(f"\n[STEP 4] Writing dataset.yaml for range '{r}'...")
+            yaml_path = write_dataset_yaml(merged_cfg["dataset_dir"], CONFIG["class_names"])
 
     if do_train:
         print("\n[STEP 5] Training YOLOv8...")
