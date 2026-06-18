@@ -8,8 +8,11 @@ version = "0.1.0"
 description = "KSU AUV software (2025-2026)"
 requires-python = ">=3.10"
 dependencies = [
+    "aiosqlite>=0.22.1",
+    "fastapi>=0.137.1",
     "httpx>=0.28.1",
     "pytest>=9.0.3",
+    "python-multipart>=0.0.32",
     "quart>=0.20.0",
 ]  # put runtime dependencies here or keep using requirements.txt
 

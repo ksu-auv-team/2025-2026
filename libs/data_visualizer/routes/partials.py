@@ -1,4 +1,6 @@
 # all HTMX partial routes (tables, charts)
+
+# htms partial are small html snippets that are used to update a website( note to self )
 # TODO add all revelant paths and get them working properly
 
 from quart import Blueprint, current_app, render_template
@@ -6,6 +8,8 @@ import httpx
 
 partials_bp = Blueprint("partials", __name__, url_prefix="/partials")
 
+
+# * this is a generic helper functiong 
 async def fetch(path: str) -> list:
     base = current_app.config["DB_API"]
     async with httpx.AsyncClient() as client:
@@ -18,8 +22,9 @@ async def fetch(path: str) -> list:
 # --- Tables ---
 @partials_bp.get("/inputs/rows")
 async def inputs_rows():
-    rows = await fetch("/inputs/")
-    return await render_template("partials/inputs_rows.html", rows=rows)
+    return "hello world"
+    #rows = await fetch("/inputs/")
+    #return await render_template("partials/inputs_rows.html", rows=rows)
 
 @partials_bp.get("/outputs/rows")
 async def outputs_rows():
@@ -32,3 +37,4 @@ async def imu_rows():
     return await render_template("partials/imu_rows.html", rows=rows)
 
 # ... same pattern for batteries, sonar, externals, internals
+
