@@ -210,3 +210,7 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 .DS_Store
+
+# ML model weights and training run artifacts
+*.pt
+libs/camera_package/model_training/runs/
