@@ -8,7 +8,7 @@ _DB_DIR = Path(__file__).parent / "db_manager"
 _RECONCILE_INTERVAL: float = 5.0
 
 # Extend this list as high-level packages are implemented.
-_SERVICES: list[str] = ["db", "hardware_interface", "camera"]
+_SERVICES: list[str] = ["db", "hardware_interface", "camera", "movement_package"]
 
 
 def _run_db() -> None:
@@ -70,6 +70,11 @@ def _run_camera() -> None:
     from libs.camera_package.camera_manager import run
     run()
 
+
+def _run_movement_package() -> None:
+    """Start the movement package process."""
+    from libs.movement_package.movement_package import run
+    run()
 
 _TARGETS: dict[str, object] = {
     "db": _run_db,
