@@ -30,7 +30,7 @@ def _run_db() -> None:
     sys.path.insert(0, str(_DB_DIR))
 
     try:
-        from run import app
+        from libs.db_manager.run import app
     except Exception:
         log.exception("DB app failed to import")
         return
