@@ -5,6 +5,7 @@ from pathlib import Path
 from libs.config import get_env
 
 _DB_DIR = Path(__file__).parent / "db_manager"
+_LIBS_DIR = Path(__file__).parent
 _RECONCILE_INTERVAL: float = 5.0
 
 # Extend this list as high-level packages are implemented.
@@ -47,6 +48,9 @@ def _run_db() -> None:
 def _run_hardware_interface(simulation: bool = False) -> None:
     """Start the hardware interface reconcile loop."""
     import logging
+    import sys
+
+    sys.path.insert(0, str(_LIBS_DIR))
 
     from libs.hardware_interface.process_manager import (
         HardwareProcessManager,
