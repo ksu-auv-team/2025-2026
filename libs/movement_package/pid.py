@@ -38,8 +38,8 @@ class PIDController:
         default_v = np.array([
             [ 1.0],                # M5
             [ 1.0],                # M6
-            [-1.0],                # M7
-            [-1.0],                # M8
+            [ 1.0],                # M7
+            [ 1.0],                # M8
         ], dtype=float)
 
         self.horizontal_mapping: np.ndarray = (
