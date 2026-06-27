@@ -44,7 +44,7 @@ def _run_db() -> None:
         raise
 
 
-def _run_hardware_interface() -> None:
+def _run_hardware_interface(simulation: bool = False) -> None:
     """Start the hardware interface reconcile loop."""
     import logging
 
@@ -56,7 +56,7 @@ def _run_hardware_interface() -> None:
     setup_logging("hardware_interface")
     log = logging.getLogger(__name__)
 
-    pm = HardwareProcessManager()
+    pm = HardwareProcessManager(dry_run=simulation)
     while True:
         try:
             pm.reconcile()
@@ -103,7 +103,7 @@ class ProcessManager:
         for name in list(self._processes):
             self.stop(name)
 
-    def start(self, name: str) -> None:
+    def start(self, name: str, simulation: bool = False) -> None:
         """Start a service by name. No-op if already running."""
         if name not in _TARGETS:
             raise ValueError(
@@ -114,8 +114,9 @@ class ProcessManager:
         if self.dry_run:
             print(f"[dry_run] start: {name}")
             return
+        kwargs = {"simulation": simulation} if name == "hardware_interface" else {}
         p = multiprocessing.Process(
-            target=_TARGETS[name], name=name, daemon=True,
+            target=_TARGETS[name], name=name, daemon=True, kwargs=kwargs,
         )
         p.start()
         self._processes[name] = p
