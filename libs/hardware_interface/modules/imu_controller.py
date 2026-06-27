@@ -45,13 +45,13 @@ class ImuController:
 
         self.auv_client.post(
             "imu",
-            YAW=_to_u8(yaw, *_ANGLE_RANGE),
-            PITCH=_to_u8(pitch, *_ANGLE_RANGE),
-            ROLL=_to_u8(roll, *_ANGLE_RANGE),
             ACCEL_X=_to_u8(ax, *_ACCEL_RANGE),
             ACCEL_Y=_to_u8(ay, *_ACCEL_RANGE),
             ACCEL_Z=_to_u8(az, *_ACCEL_RANGE),
-            ACCURACY=_to_u8(accuracy, *_ACCURACY_RANGE),
+            GYRO_X=_to_u8(yaw, *_ANGLE_RANGE),
+            GYRO_Y=_to_u8(pitch, *_ANGLE_RANGE),
+            GYRO_Z=_to_u8(roll, *_ANGLE_RANGE),
+            MAG_X=0, MAG_Y=0, MAG_Z=0,
         )
 
     def run(self) -> None:
@@ -74,13 +74,14 @@ def _test() -> None:
 
     idx, yaw, pitch, roll, ax, ay, az, accuracy = struct.unpack(_PACKET_FMT, raw)
     print(f"  Frame index : {idx}")
-    print(f"  Yaw         : {yaw / 100:.2f}°  → {_to_u8(yaw, *_ANGLE_RANGE)}")
-    print(f"  Pitch       : {pitch / 100:.2f}°  → {_to_u8(pitch, *_ANGLE_RANGE)}")
-    print(f"  Roll        : {roll / 100:.2f}°  → {_to_u8(roll, *_ANGLE_RANGE)}")
-    print(f"  Accel X     : {ax / 100:.2f} m/s²  → {_to_u8(ax, *_ACCEL_RANGE)}")
-    print(f"  Accel Y     : {ay / 100:.2f} m/s²  → {_to_u8(ay, *_ACCEL_RANGE)}")
-    print(f"  Accel Z     : {az / 100:.2f} m/s²  → {_to_u8(az, *_ACCEL_RANGE)}")
-    print(f"  Accuracy    : {accuracy}  → {_to_u8(accuracy, *_ACCURACY_RANGE)}")
+    print(f"  ACCEL_X     : {ax / 100:.2f} m/s²  → {_to_u8(ax, *_ACCEL_RANGE)}")
+    print(f"  ACCEL_Y     : {ay / 100:.2f} m/s²  → {_to_u8(ay, *_ACCEL_RANGE)}")
+    print(f"  ACCEL_Z     : {az / 100:.2f} m/s²  → {_to_u8(az, *_ACCEL_RANGE)}")
+    print(f"  GYRO_X (yaw)  : {yaw / 100:.2f}°  → {_to_u8(yaw, *_ANGLE_RANGE)}")
+    print(f"  GYRO_Y (pitch): {pitch / 100:.2f}°  → {_to_u8(pitch, *_ANGLE_RANGE)}")
+    print(f"  GYRO_Z (roll) : {roll / 100:.2f}°  → {_to_u8(roll, *_ANGLE_RANGE)}")
+    print(f"  MAG_X/Y/Z   : 0 / 0 / 0")
+    print(f"  Accuracy    : {accuracy}")
 
 
 if __name__ == "__main__":
