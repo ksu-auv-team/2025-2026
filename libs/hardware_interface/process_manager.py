@@ -2,8 +2,8 @@ import logging
 import threading
 from collections.abc import Callable
 
-from config import get_env
-from hardware_interface.scanner import scan_i2c_bus
+from libs.config import get_env
+from libs.hardware_interface.scanner import scan_i2c_bus
 
 _RETRY_DELAY: float = 5.0
 _log = logging.getLogger(__name__)
