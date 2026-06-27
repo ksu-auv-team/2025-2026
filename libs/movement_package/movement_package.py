@@ -1,17 +1,23 @@
-from quick_request import AUVClient
-from pid import PIDController
+import time
+
+from ..quick_request import AUVClient
+from ..config import get_env
+from .pid import PIDController
 
 # --- Globals ---
 
 PID = PIDController()
 
-DISARMED = {
-    "step_index": 0,
-    "M1": 127, "M2": 127, "M3": 127, "M4": 127,
-    "M5": 127, "M6": 127, "M7": 127, "M8": 127,
-    "S1": 127, "S2": 127, "S3": 127,
-    "arm": False
-}
+def _neutral() -> int:
+    return int(get_env("MOTOR_NEUTRAL", "127"))
+
+def _disarmed() -> dict:
+    n = _neutral()
+    return {
+        "MOTOR1": n, "MOTOR2": n, "MOTOR3": n, "MOTOR4": n,
+        "MOTOR5": n, "MOTOR6": n, "MOTOR7": n, "MOTOR8": n,
+        "S1": n, "S2": n, "S3": n,
+    }
 
 # --- Helpers ---
 
@@ -25,15 +31,15 @@ def remap(value: float, in_min=-1.0, in_max=1.0, out_min=0, out_max=255) -> int:
 def call_inputs(client: AUVClient) -> dict | None:
     return client.latest("inputs")
 
-def generate_outputs(inputs: dict) -> dict:
-    if not inputs or not inputs.get("arm"):
-        return DISARMED
+def generate_outputs(inputs: dict | None) -> dict:
+    if not inputs or not inputs.get("ARM"):
+        return _disarmed()
 
     PID.update_motors(
-        x=float(inputs.get("x", 0)),
-        y=float(inputs.get("y", 0)),
-        z=float(inputs.get("z", 0)),
-        yaw=float(inputs.get("yaw", 0)),
+        x=float(inputs.get("SURGE", 0)),
+        y=float(inputs.get("SWAY", 0)),
+        z=float(inputs.get("HEAVE", 0)),
+        yaw=float(inputs.get("YAW", 0)),
     )
 
     motors = PID.as_list_flat()  # [M1..M8] in [-1, 1]
@@ -44,23 +50,27 @@ def generate_outputs(inputs: dict) -> dict:
         s1 = s2 = s3 = 0.0
 
     return {
-        "step_index": int(inputs.get("step_index", 0)),
-        "M1": remap(motors[0]), "M2": remap(motors[1]),
-        "M3": remap(motors[2]), "M4": remap(motors[3]),
-        "M5": remap(motors[4]), "M6": remap(motors[5]),
-        "M7": remap(motors[6]), "M8": remap(motors[7]),
+        "MOTOR1": remap(motors[0]), "MOTOR2": remap(motors[1]),
+        "MOTOR3": remap(motors[2]), "MOTOR4": remap(motors[3]),
+        "MOTOR5": remap(motors[4]), "MOTOR6": remap(motors[5]),
+        "MOTOR7": remap(motors[6]), "MOTOR8": remap(motors[7]),
         "S1": remap(s1), "S2": remap(s2), "S3": remap(s3),
-        "arm": True
     }
 
 def send_outputs(client: AUVClient, outputs: dict) -> None:
-    client.post("outputs", outputs)
+    client.post("outputs", **outputs)
 
 # --- Entry point ---
 
-def run():
-    client = AUVClient("http://192.168.1.10:8000")
+def run() -> None:
+    host     = get_env("AUV_HOST", "localhost")
+    port     = get_env("AUV_PORT", "8000")
+    poll_hz  = float(get_env("MOVEMENT_POLL_HZ", "50"))
+    interval = 1.0 / max(poll_hz, 1.0)
+
+    client = AUVClient(f"http://{host}:{port}")
     while True:
         inputs  = call_inputs(client)
         outputs = generate_outputs(inputs)
         send_outputs(client, outputs)
+        time.sleep(interval)
