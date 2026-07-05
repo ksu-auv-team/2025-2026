@@ -248,6 +248,7 @@ class ControllersPanel(VerticalScroll):
     """
 
     controller_state: reactive[dict[str, dict]] = reactive(dict, recompose=False)
+    _blink_state: reactive[bool] = reactive(False)
 
     def compose(self) -> ComposeResult:
         yield PanelTitle("  CONTROLLERS")
@@ -259,7 +260,18 @@ class ControllersPanel(VerticalScroll):
                 yield Static("en:— det:—", classes="flag", id=f"ctrl-flag-{name}")
                 yield Button("start", id=f"ctrl-toggle-{name}", variant="success")
 
+    def on_mount(self) -> None:
+        self.set_interval(0.8, self._tick_blink)
+
+    def _tick_blink(self) -> None:
+        self._blink_state = not self._blink_state
+        self._repaint_dots()
+
     def watch_controller_state(self, state: dict[str, dict]) -> None:
+        self._repaint_dots(state)
+
+    def _repaint_dots(self, state: dict[str, dict] | None = None) -> None:
+        state = state if state is not None else self.controller_state
         for name in CONTROLLERS:
             info     = state.get(name, {})
             enabled  = bool(info.get("enabled"))
@@ -268,6 +280,9 @@ class ControllersPanel(VerticalScroll):
 
             dot = self.query_one(f"#ctrl-dot-{name}", Static)
             if running:
+                dot.update(DOT_BLINK if self._blink_state else DOT_ON)
+                dot.set_classes("dot dot-on")
+            elif enabled and detected:
                 dot.update(DOT_ON)
                 dot.set_classes("dot dot-on")
             elif enabled and not detected:
@@ -826,6 +841,20 @@ class AUVControlApp(App):
         except Exception:
             ctrl = {n: {"enabled": False, "detected": False,
                         "running": False, "pid": None} for n in CONTROLLERS}
+
+        # self.hpm runs in this UI process, while the hardware_interface
+        # service (and the controller threads it reconciles) runs in a
+        # separate subprocess with its own HardwareProcessManager — so
+        # self.hpm never observes those threads directly. Treat an
+        # enabled+detected controller as running whenever the service is
+        # up, since that's when its reconcile loop will have started it.
+        hw_running = bool(svc.get("hardware_interface", {}).get("running"))
+        for name in CONTROLLERS:
+            info = ctrl.setdefault(name, {"enabled": False, "detected": False,
+                                           "running": False, "pid": None})
+            if hw_running and info.get("enabled") and info.get("detected"):
+                info["running"] = True
+
         self.query_one(ServicesPanel).service_state   = svc
         self.query_one(ControllersPanel).controller_state = ctrl
 

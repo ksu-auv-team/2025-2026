@@ -84,6 +84,7 @@ _TARGETS: dict[str, object] = {
     "db": _run_db,
     "hardware_interface": _run_hardware_interface,
     "camera": _run_camera,
+    "movement": _run_movement_package,
 }
 
 
