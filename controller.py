@@ -1,22 +1,26 @@
-import pygame
-import requests
 import argparse
-from shared.mapping import map
 import sys
 import time
 
+import pygame
+import requests
+
+from libs.config import get_env
+from shared.mapping import map_range
+
+
 class Controller:
-    def __init__(self, lr: bool = False, debug: bool = True, sendDB: bool = False):
+    def __init__(self, lr: bool = False, debug: bool = True, send_db: bool = False):
         """
         @brief Initialize joystick controller and internal state.
         @param lr Last-resort mode flag (unused in normal parse path).
         @param debug Enable console debug output.
-        @param sendDB Enable sending data to the database.
+        @param send_db Enable sending data to the database.
         """
         self.joystick = None
         self.lr = lr  # last_resort
         self.debug = debug
-        self.sendDB = sendDB
+        self.send_db = send_db
 
         pygame.init()
 
@@ -31,21 +35,20 @@ class Controller:
         self.joy_data = []
         self.deadzone = 0.1
 
-        # Output payload. Note: X/Y/Z/Yaw set to 0 when in deadzone; adjust as needed.
-        #self.out_data = {
-        #    "arm": False,   # Always treated as boolean in logic
-        #    "x": 0,
-        #    "y": 0,
-        #    "z": 0,
-        #    "yaw": 0,
-        #    "s1": 0,
-        #    "s2": 0,
-        #    "s3": 0,
-        #    "step_index": 0
-        #}
+        self.orin_ip = get_env("ORIN_IP", default="192.168.72.75")
+        self.orin_port = get_env("ORIN_PORT", default="5000")
 
+        # Output payload. Note: X/Y/Z/Yaw set to 0 when in deadzone; adjust as needed.
         self.out_data = {
-            ""
+            "arm": False,   # Always treated as boolean in logic
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "yaw": 0,
+            "s1": 0,
+            "s2": 0,
+            "s3": 0,
+            "step_index": 0,
         }
 
         # --- Edge detection / one-shot reset control ---
@@ -79,8 +82,7 @@ class Controller:
             # Arm: treat as boolean. If button index 19 is used and returns 0/1,
             # this yields True when pressed, else False. If it's an axis, deadzone applies.
             #arm_raw = self.joy_data[19] if len(self.joy_data) > 19 else 0
-            
-            arm_out = self.joy_data[9] #left bumper
+
             arm_in = self.joy_data[10] #right bumper
 
             if arm_in != 0:
@@ -96,29 +98,30 @@ class Controller:
                 self.out_data["step_index"] = 0
 
             # Axes → [-1, 1] (or 0 if within deadzone)
-            self.out_data["x"] = map(x=self.joy_data[4], in_max=0.88, in_min=-0.91, out_min=-1, out_max=1) if abs(self.joy_data[4]) > self.deadzone else 0
-            self.out_data["y"] = map(x=self.joy_data[3], in_max=0.83, in_min=-0.85, out_min=-1, out_max=1) if abs(self.joy_data[3]) > self.deadzone else 0
-            self.out_data["z"] = map(x=self.joy_data[1], in_max=0.55, in_min=-0.82, out_min=-1, out_max=1) if abs(self.joy_data[1]) > self.deadzone else 0
-            self.out_data["yaw"] = map(x=self.joy_data[0], in_max=0.86, in_min=-0.78, out_min=-1, out_max=1) if abs(self.joy_data[0]) > self.deadzone else 0
+            self.out_data["x"] = map_range(x=self.joy_data[4], in_max=0.88, in_min=-0.91, out_min=-1, out_max=1) if abs(self.joy_data[4]) > self.deadzone else 0
+            self.out_data["y"] = map_range(x=self.joy_data[3], in_max=0.83, in_min=-0.85, out_min=-1, out_max=1) if abs(self.joy_data[3]) > self.deadzone else 0
+            self.out_data["z"] = map_range(x=self.joy_data[1], in_max=0.55, in_min=-0.82, out_min=-1, out_max=1) if abs(self.joy_data[1]) > self.deadzone else 0
+            self.out_data["yaw"] = map_range(x=self.joy_data[0], in_max=0.86, in_min=-0.78, out_min=-1, out_max=1) if abs(self.joy_data[0]) > self.deadzone else 0
         else:
             # Last-resort mode path (if used elsewhere)
             pass
 
-    def sendToDB(self):
+    def send_to_db(self):
         """
         @brief Send current out_data to the database.
         @details Sends to /inputs or /outputs based on last-resort flag.
         """
+        base_url = f"http://{self.orin_ip}:{self.orin_port}"
         if not self.lr:
-            self.response = requests.post("http://192.168.8.138:5000/inputs/", json=self.out_data)
+            self.response = requests.post(f"{base_url}/inputs/", json=self.out_data)
         else:
-            self.response = requests.post("http://192.168.8.138:5000/outputs/", json=self.out_data)
+            self.response = requests.post(f"{base_url}/outputs/", json=self.out_data)
         if self.response.status_code == 200:
             print("Data sent successfully")
         else:
             print("Failed to send data")
 
-    def debugOutput(self):
+    def debug_output(self):
         """
         @brief Print joystick and output data in a scrolling-friendly way.
         """
@@ -136,7 +139,7 @@ class Controller:
         sys.stdout.write(out_string)
         sys.stdout.flush()
 
-    def resetOutData(self):
+    def reset_out_data(self):
         """
         @brief Reset out_data to default values and send once to DB.
         @details This is intended to run once on the first falling edge after Arm has been True.
@@ -150,9 +153,9 @@ class Controller:
             "step_index": 0,
             "s1": 0,
             "s2": 0,
-            "s3": 0
+            "s3": 0,
         }
-        self.sendToDB()
+        self.send_to_db()
 
     def run(self):
         """
@@ -160,7 +163,7 @@ class Controller:
         @details
           - Rising edge (False->True): marks that Arm has been active.
           - Falling edge (True->False): if Arm was previously active and reset not fired,
-            call resetOutData() exactly once.
+            call reset_out_data() exactly once.
         """
         while True:
             self.gather_input()
@@ -176,23 +179,21 @@ class Controller:
 
             # Falling edge: fire reset exactly once if Arm had been True before.
             if (not current_arm) and self.prev_arm and self.has_armed and (not self.reset_fired):
-                if self.sendDB:
-                    self.resetOutData()
+                if self.send_db:
+                    self.reset_out_data()
                 self.reset_fired = True
                 # Optional: break after reset (matches your original behavior).
                 # Remove this break if you want the loop to continue running after the one-shot reset.
                 break
 
             self.sent = 0
-            if self.sendDB:
-                # Only send continuous data while armed
-                if current_arm:
-                    self.sendToDB()
-                    self.sent = 1
-                # Else: do nothing here; the falling-edge block above handles reset+break.
+            # Only send continuous data while armed; falling-edge block above handles reset+break.
+            if self.send_db and current_arm:
+                self.send_to_db()
+                self.sent = 1
 
             if self.debug:
-                self.debugOutput()
+                self.debug_output()
 
             # Update previous value for next loop iteration
             self.prev_arm = current_arm
@@ -204,8 +205,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Controller for joystick input")
     parser.add_argument("--lr", action="store_true", help="Enable last resort mode")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
-    parser.add_argument("--sendDB", action="store_true", help="Enable sending data to database")
+    parser.add_argument("--send-db", dest="send_db", action="store_true", help="Enable sending data to database")
     args = parser.parse_args()
 
-    con = Controller(lr=args.lr, debug=args.debug, sendDB=args.sendDB)
+    con = Controller(lr=args.lr, debug=args.debug, send_db=args.send_db)
     con.run()

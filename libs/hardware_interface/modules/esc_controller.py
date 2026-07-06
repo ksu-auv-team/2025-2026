@@ -14,13 +14,13 @@ _MAX: int = 255
 _NEUTRAL: int = 127
 
 
-def _clamp(value: int) -> int:
-    return max(_MIN, min(_MAX, value))
+def _clamp(value: float) -> int:
+    return max(_MIN, min(_MAX, round(value)))
 
 
 def set_thrust(
-    motor1: int, motor2: int, motor3: int, motor4: int,
-    motor5: int, motor6: int, motor7: int, motor8: int,
+    motor1: float, motor2: float, motor3: float, motor4: float,
+    motor5: float, motor6: float, motor7: float, motor8: float,
 ) -> None:
     """Send thrust values (0-255) for all 8 motors via Pico over I2C."""
     motors = (motor1, motor2, motor3, motor4, motor5, motor6, motor7, motor8)
