@@ -193,6 +193,7 @@ class ServicesPanel(Vertical):
         yield Static(
             "[1] db  [2] hw  [3] move  [4] cam  [5] ai  [a] all  [A] stop all",
             classes="hint",
+            markup=False,
         )
 
     def on_mount(self) -> None:
