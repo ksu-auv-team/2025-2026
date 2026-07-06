@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, confloat, conint, constr
 # ---- inputs ----
 class InputsCreate(BaseModel):
     TIMESTAMP: Optional[str] = Field(None, description="ISO8601 UTC string")
-    SURGE: int; SWAY: int; HEAVE: int; ROLL: int; PITCH: int; YAW: int
+    SURGE: float; SWAY: float; HEAVE: float; ROLL: float; PITCH: float; YAW: float
     S1: conint(ge=0, le=1); S2: conint(ge=0, le=1)
     S3: int
     ARM: conint(ge=0, le=1)

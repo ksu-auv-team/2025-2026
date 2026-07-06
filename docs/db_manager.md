@@ -43,12 +43,12 @@ Controller inputs received from the operator.
 |---|---|---|
 | ID | INTEGER PK | Auto-increment |
 | TIMESTAMP | TEXT | ISO-8601 UTC |
-| SURGE | INTEGER | Forward / backward thrust command |
-| SWAY | INTEGER | Left / right thrust command |
-| HEAVE | INTEGER | Up / down thrust command |
-| ROLL | INTEGER | Roll rotation command |
-| PITCH | INTEGER | Pitch rotation command |
-| YAW | INTEGER | Yaw rotation command |
+| SURGE | REAL | Forward / backward thrust command, normalized -1..1 |
+| SWAY | REAL | Left / right thrust command, normalized -1..1 |
+| HEAVE | REAL | Up / down thrust command, normalized -1..1 |
+| ROLL | REAL | Roll rotation command, normalized -1..1 |
+| PITCH | REAL | Pitch rotation command, normalized -1..1 |
+| YAW | REAL | Yaw rotation command, normalized -1..1 |
 | S1 | BOOLEAN (0/1) | Switch 1 |
 | S2 | BOOLEAN (0/1) | Switch 2 |
 | S3 | INTEGER | Switch 3 (multi-state) |
