@@ -1,0 +1,19 @@
+{% for row in rows %}
+<tr class="border-b border-gray-800 hover:bg-gray-800/40 text-sm">
+  <td class="px-3 py-2 text-gray-400">{{ row.ID }}</td>
+  <td class="px-3 py-2">{{ "%.3f"|format(row.ACCEL_X) }}</td>
+  <td class="px-3 py-2">{{ "%.3f"|format(row.ACCEL_Y) }}</td>
+  <td class="px-3 py-2">{{ "%.3f"|format(row.ACCEL_Z) }}</td>
+  <td class="px-3 py-2">{{ "%.3f"|format(row.GYRO_X) }}</td>
+  <td class="px-3 py-2">{{ "%.3f"|format(row.GYRO_Y) }}</td>
+  <td class="px-3 py-2">{{ "%.3f"|format(row.GYRO_Z) }}</td>
+  <td class="px-3 py-2">{{ "%.2f"|format(row.MAG_X) }}</td>
+  <td class="px-3 py-2">{{ "%.2f"|format(row.MAG_Y) }}</td>
+  <td class="px-3 py-2">{{ "%.2f"|format(row.MAG_Z) }}</td>
+  <td class="px-3 py-2 text-gray-500 text-xs">{{ row.TIMESTAMP }}</td>
+</tr>
+{% else %}
+<tr>
+  <td colspan="11" class="px-3 py-6 text-center text-gray-600">No data</td>
+</tr>
+{% endfor %}

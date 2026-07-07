@@ -1,0 +1,30 @@
+{% for row in rows %}
+<tr class="border-b border-gray-800 hover:bg-gray-800/40 text-sm">
+  <td class="px-3 py-2 text-gray-400">{{ row.ID }}</td>
+
+  {# Voltages — warn if dropping below 80 #}
+  {% for v in [row.B1_VOLTAGE, row.B2_VOLTAGE, row.B3_VOLTAGE] %}
+    <td class="px-3 py-2 {% if v < 80 %}text-red-400{% else %}text-green-400{% endif %}">
+      {{ v }}
+    </td>
+  {% endfor %}
+
+  {# Currents #}
+  {% for c in [row.B1_CURRENT, row.B2_CURRENT, row.B3_CURRENT] %}
+    <td class="px-3 py-2">{{ c }}</td>
+  {% endfor %}
+
+  {# Temps — warn above 35 #}
+  {% for t in [row.B1_TEMP, row.B2_TEMP, row.B3_TEMP] %}
+    <td class="px-3 py-2 {% if t > 35 %}text-orange-400{% else %}text-gray-200{% endif %}">
+      {{ t }}°
+    </td>
+  {% endfor %}
+
+  <td class="px-3 py-2 text-gray-500 text-xs">{{ row.TIMESTAMP }}</td>
+</tr>
+{% else %}
+<tr>
+  <td colspan="11" class="px-3 py-6 text-center text-gray-600">No data</td>
+</tr>
+{% endfor %}

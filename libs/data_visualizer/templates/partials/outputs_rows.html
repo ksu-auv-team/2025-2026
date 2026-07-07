@@ -1,0 +1,18 @@
+{% for row in rows %}
+<tr class="border-b border-gray-800 hover:bg-gray-800/40 text-sm">
+  <td class="px-3 py-2 text-gray-400">{{ row.ID }}</td>
+  <td class="px-3 py-2">{{ row.MOTOR1 }}</td>
+  <td class="px-3 py-2">{{ row.MOTOR2 }}</td>
+  <td class="px-3 py-2">{{ row.MOTOR3 }}</td>
+  <td class="px-3 py-2">{{ row.MOTOR4 }}</td>
+  <td class="px-3 py-2">{{ row.VERTICAL_THRUST }}</td>
+  <td class="px-3 py-2">{{ row.S1 }}</td>
+  <td class="px-3 py-2">{{ row.S2 }}</td>
+  <td class="px-3 py-2">{{ row.S3 }}</td>
+  <td class="px-3 py-2 text-gray-500 text-xs">{{ row.TIMESTAMP }}</td>
+</tr>
+{% else %}
+<tr>
+  <td colspan="10" class="px-3 py-6 text-center text-gray-600">No data</td>
+</tr>
+{% endfor %}
