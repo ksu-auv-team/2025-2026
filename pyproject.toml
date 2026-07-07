@@ -14,6 +14,7 @@ dependencies = [
     "pytest>=9.0.3",
     "python-multipart>=0.0.32",
     "quart>=0.20.0",
+    "uvicorn[standard]>=0.50.2",
 ]  # put runtime dependencies here or keep using requirements.txt
 
 [tool.setuptools]
