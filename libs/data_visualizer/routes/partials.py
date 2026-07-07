@@ -44,7 +44,9 @@ async def fetch(path: str, limit: int = 50) -> list[dict]:
     Returns [] instead of raising so every partial still renders
     with an empty-state row if the DB API is down.
     """
-    base = current_app.config["DB_API"]
+    #base = current_app.config["DB_API"]
+    base= "http://127.0.0.1:8000"
+    
     try:
         async with httpx.AsyncClient() as client:
             r = await client.get(f"{base}{path}", params={"limit": limit}, timeout=5)
