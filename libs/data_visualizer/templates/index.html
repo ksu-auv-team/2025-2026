@@ -1,22 +1,17 @@
 {% extends "base.html" %}
 
-<table class="w-full text-sm">
-  <thead class="sticky top-0 bg-gray-900">
-    <tr>
-      <th class="px-3 py-2 text-left">ID</th>
-      <th class="px-3 py-2 text-left">Step</th>
-      <th class="px-3 py-2 text-left">X</th>
-      <!-- ... -->
-    </tr>
-  </thead>
-  <tbody
-    hx-get="/partials/inputs/rows"
-    hx-trigger="load, every 2s"
-    hx-swap="innerHTML">
-  </tbody>
-</table>
-<p class="text-5xl text-red-100">
-hello this is test
-</p>
-
-
+{% block content %}
+<div class="flex flex-row">
+  <table class="w-full text-sm overflow-y-scroll">
+    <thead class="sticky top-0 bg-gray-900">
+      <tr>
+        <th class="px-3 py-2 text-left">ID</th>
+        <th class="px-3 py-2 text-left">Step</th>
+        <th class="px-3 py-2 text-left">X</th>
+      </tr>
+    </thead>
+    <tbody hx-get="/partials/inputs/rows" hx-trigger="load, every 6s" hx-swap="innerHTML">
+    </tbody>
+  </table>
+</div>
+{% endblock %}

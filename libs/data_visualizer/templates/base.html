@@ -5,13 +5,13 @@
   <title>KSU AUV Visualizer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- Tailwind -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <!-- HTMX -->
-  <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.0/dist/htmx.min.js"></script>
   <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/htmx.js" integrity="sha384-Q+Dky3iHVJOr6wUjQ4ulh6uQ76an/t+ak1+PjMVaxRjbZamFLAG+u9InkfjbsEQf" crossorigin="anonymous"></script>
 </head>
-<body class="bg-gray-950 text-gray-100 h-screen flex flex-col overflow-hidden">
+<body class="bg-gray-950 text-gray-100 h-screen flex flex-col ">
   {% block navbar %}...{% endblock %}
   {% block content %}{% endblock %}
   <script src="{{ url_for('static', filename='app.js') }}"></script>
