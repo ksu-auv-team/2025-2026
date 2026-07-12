@@ -9,7 +9,7 @@ _LIBS_DIR = Path(__file__).parent
 _RECONCILE_INTERVAL: float = 5.0
 
 # Extend this list as high-level packages are implemented.
-_SERVICES: list[str] = ["db", "hardware_interface", "camera", "movement"]
+_SERVICES: list[str] = ["db", "hardware_interface", "camera", "ai", "movement"]
 
 
 def _run_db() -> None:
