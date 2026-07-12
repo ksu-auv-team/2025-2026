@@ -9,7 +9,7 @@ _LIBS_DIR = Path(__file__).parent
 _RECONCILE_INTERVAL: float = 5.0
 
 # Extend this list as high-level packages are implemented.
-_SERVICES: list[str] = ["db", "hardware_interface", "camera", "movement"]
+_SERVICES: list[str] = ["db", "hardware_interface", "camera", "ai", "movement"]
 
 
 def _run_db() -> None:
@@ -74,6 +74,12 @@ def _run_camera() -> None:
     from libs.camera_package.camera_manager import run
     run()
 
+
+def _run_ai_package() -> None:
+    """Start the AI Package."""
+    from libs.ai_package.ai_interface import run
+    run()
+    
 
 def _run_movement_package() -> None:
     """Start the movement package process."""
