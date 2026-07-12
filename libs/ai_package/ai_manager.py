@@ -41,7 +41,7 @@ class TaskEntry:
 # add tasks -- everything else in this file is generic.
 MISSION_PLAN: List[TaskEntry] = [
     TaskEntry("gate", gate_logic),
-    TaskEntry("slalom", slalom_logic),
+    #TaskEntry("slalom", slalom_logic),
 ]
 
 # How long the active task can go without seeing its own target before
