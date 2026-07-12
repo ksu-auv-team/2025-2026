@@ -71,6 +71,12 @@ def _run_camera() -> None:
     run()
 
 
+def _run_ai_package() -> None:
+    """Start the AI Package."""
+    from libs.ai_package.ai_interface import run
+    run()
+    
+
 def _run_movement_package() -> None:
     """Start the movement package process."""
     from libs.movement_package.movement_package import run

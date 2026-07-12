@@ -2,7 +2,7 @@ import time
 from ..quick_request import AUVClient
 from ..config import get_env
 from libs.movement_package.movement_package import generate_outputs, send_outputs
-from . import ai_logic
+from . import ai_manager
 
 
 def run() -> None:
@@ -13,7 +13,7 @@ def run() -> None:
     client = AUVClient(f"http://{host}:{port}")
 
     while True:
-        inputs = ai_logic.ai_logic(client)
+        inputs = ai_manager.update(client)
         outputs = generate_outputs(inputs)
         send_outputs(client, outputs)
         time.sleep(interval)
