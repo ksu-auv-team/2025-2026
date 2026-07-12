@@ -72,8 +72,8 @@ async def _list_by_time(
 # ----------------------------------------------------------------------
 @router.post("/inputs", tags=["inputs"])
 async def create_inputs(
-    SURGE: int = Form(...), SWAY: int = Form(...), HEAVE: int = Form(...),
-    ROLL: int = Form(...), PITCH: int = Form(...), YAW: int = Form(...),
+    SURGE: float = Form(...), SWAY: float = Form(...), HEAVE: float = Form(...),
+    ROLL: float = Form(...), PITCH: float = Form(...), YAW: float = Form(...),
     S1: int = Form(...), S2: int = Form(...), S3: int = Form(...), ARM: int = Form(...),
     db: aiosqlite.Connection = Depends(get_db),
 ):

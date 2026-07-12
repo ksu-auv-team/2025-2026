@@ -1,5 +1,39 @@
+from typing import Dict, Iterator, List, Union
+
 import numpy as np
-from typing import Iterator, List, Union, Dict
+
+from ..config import get_env
+
+
+# Module-level defaults — overridden by MOTOR_H_MAP / MOTOR_V_MAP env vars.
+# MOTOR_H_MAP: 4x3 row-major floats for M1..M4 vs [X, Y, Yaw]
+# MOTOR_V_MAP: 4x1 row-major floats for M5..M8 vs [Z]
+_DEFAULT_H = np.array([
+    [ 1.0,  1.0, -1.0],   # M1
+    [ 1.0, -1.0,  1.0],   # M2
+    [-1.0, -1.0,  1.0],   # M3
+    [ 1.0, -1.0, -1.0],   # M4
+], dtype=float)
+
+_DEFAULT_V = np.array([
+    [1.0],   # M5
+    [1.0],   # M6
+    [1.0],   # M7
+    [1.0],   # M8
+], dtype=float)
+
+
+def _env_matrix(key: str, default: np.ndarray) -> np.ndarray:
+    """Parse a comma-separated env var into a numpy array reshaped to default's shape."""
+    raw = get_env(key)
+    if not raw:
+        return default.copy()
+    try:
+        values = [float(v.strip()) for v in raw.split(",") if v.strip()]
+        return np.array(values, dtype=float).reshape(default.shape)
+    except (ValueError, TypeError):
+        return default.copy()
+
 
 class PIDController:
     """
@@ -24,29 +58,13 @@ class PIDController:
         @param vertical_mapping    4x1 ([Z]) or 4x3/4x4 for M5..M8. Defaults provided.
         @param clip                Absolute clamp for outputs; 1.0 keeps values in [-1,1].
         """
-        # --- Defaults match your architecture: horizontals use [X,Y,Yaw], verticals use [Z] only ---
-
-        # Rows = M1..M4, Cols = [X, Y, Yaw]
-        default_h = np.array([
-            [ 1.0,  1.0, -1.0],   # M1 = +X -Y (+Yaw term here if you add it)
-            [ 1.0, -1.0,  1.0],   # M2 = +X +Y
-            [-1.0, -1.0,  1.0],   # M3 = -X +Y
-            [ 1.0, -1.0, -1.0],   # M4 = +X +Y
-        ], dtype=float)
-
-        # Rows = M5..M8, Col = [Z]
-        default_v = np.array([
-            [ 1.0],                # M5
-            [ 1.0],                # M6
-            [-1.0],                # M7
-            [-1.0],                # M8
-        ], dtype=float)
-
         self.horizontal_mapping: np.ndarray = (
-            default_h if horizontal_mapping is None else np.array(horizontal_mapping, dtype=float)
+            _env_matrix("MOTOR_H_MAP", _DEFAULT_H) if horizontal_mapping is None
+            else np.array(horizontal_mapping, dtype=float)
         )
         self.vertical_mapping: np.ndarray = (
-            default_v if vertical_mapping   is None else np.array(vertical_mapping,   dtype=float)
+            _env_matrix("MOTOR_V_MAP", _DEFAULT_V) if vertical_mapping is None
+            else np.array(vertical_mapping, dtype=float)
         )
 
         # Outputs (normalized)

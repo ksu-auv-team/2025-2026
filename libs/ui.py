@@ -100,6 +100,19 @@ CONTROLLERS: tuple[str, ...] = (
 INPUT_FIELDS: tuple[str, ...] = (
     "SURGE", "SWAY", "HEAVE", "ROLL", "PITCH", "YAW", "S1", "S2", "S3",
 )
+MOTOR_OUTPUTS: tuple[str, ...] = (
+    "MOTOR1", "MOTOR2", "MOTOR3", "MOTOR4",
+    "MOTOR5", "MOTOR6", "MOTOR7", "MOTOR8",
+    "S1", "S2", "S3",
+)
+# Reference points for the 0-255 → 1000-2000µs linear map
+_MOTOR_GUIDE: tuple[tuple[int, str, str], ...] = (
+    (  0, "1000µs", "stopped"),
+    ( 64, "~1251µs", "slow"),
+    (128, "~1502µs", "neutral"),
+    (192, "~1753µs", "fast"),
+    (255, "2000µs", "full throttle"),
+)
 TELEMETRY_TABLES: tuple[str, ...] = ("imu", "depth", "power_safety")
 
 POLL_INTERVAL: float = 0.5
@@ -180,6 +193,7 @@ class ServicesPanel(Vertical):
         yield Static(
             "[1] db  [2] hw  [3] move  [4] cam  [5] ai  [a] all  [A] stop all",
             classes="hint",
+            markup=False,
         )
 
     def on_mount(self) -> None:
@@ -235,6 +249,7 @@ class ControllersPanel(VerticalScroll):
     """
 
     controller_state: reactive[dict[str, dict]] = reactive(dict, recompose=False)
+    _blink_state: reactive[bool] = reactive(False)
 
     def compose(self) -> ComposeResult:
         yield PanelTitle("  CONTROLLERS")
@@ -246,7 +261,18 @@ class ControllersPanel(VerticalScroll):
                 yield Static("en:— det:—", classes="flag", id=f"ctrl-flag-{name}")
                 yield Button("start", id=f"ctrl-toggle-{name}", variant="success")
 
+    def on_mount(self) -> None:
+        self.set_interval(0.8, self._tick_blink)
+
+    def _tick_blink(self) -> None:
+        self._blink_state = not self._blink_state
+        self._repaint_dots()
+
     def watch_controller_state(self, state: dict[str, dict]) -> None:
+        self._repaint_dots(state)
+
+    def _repaint_dots(self, state: dict[str, dict] | None = None) -> None:
+        state = state if state is not None else self.controller_state
         for name in CONTROLLERS:
             info     = state.get(name, {})
             enabled  = bool(info.get("enabled"))
@@ -255,6 +281,9 @@ class ControllersPanel(VerticalScroll):
 
             dot = self.query_one(f"#ctrl-dot-{name}", Static)
             if running:
+                dot.update(DOT_BLINK if self._blink_state else DOT_ON)
+                dot.set_classes("dot dot-on")
+            elif enabled and detected:
                 dot.update(DOT_ON)
                 dot.set_classes("dot dot-on")
             elif enabled and not detected:
@@ -481,6 +510,81 @@ class PIDTuningPanel(VerticalScroll):
         self.query_one("#pid-ack", Static).update(ack)
 
 
+class MotorOverridePanel(VerticalScroll):
+    """Bottom-right tab — direct 0-255 PWM override posted to the outputs table."""
+
+    DEFAULT_CSS = """
+    MotorOverridePanel { height: 1fr; }
+    MotorOverridePanel .body {
+        layout: horizontal; height: auto;
+    }
+    MotorOverridePanel .grid {
+        layout: grid; grid-size: 4 3; grid-gutter: 1;
+        padding: 1; height: auto; width: 3fr;
+    }
+    MotorOverridePanel .field { layout: vertical; height: 5; }
+    MotorOverridePanel .field Label { color: #8b949e; }
+    MotorOverridePanel Input { height: 3; }
+    MotorOverridePanel Input:focus { border: tall #58a6ff; }
+    MotorOverridePanel .guide {
+        width: 1fr; padding: 1; border-left: solid #30363d;
+        height: auto;
+    }
+    MotorOverridePanel .guide-title { color: #58a6ff; text-style: bold; height: 1; }
+    MotorOverridePanel .guide-row { height: 2; color: #8b949e; padding: 0 0 1 0; }
+    MotorOverridePanel .actions {
+        layout: horizontal; padding: 1; height: 5;
+    }
+    MotorOverridePanel .actions Button { margin-right: 1; }
+    MotorOverridePanel .ack { color: #3fb950; padding: 0 1; height: 1; content-align: left middle; }
+    """
+
+    last_ack: reactive[str] = reactive("")
+
+    def compose(self) -> ComposeResult:
+        yield PanelTitle("  MOTOR OVERRIDE  ›  outputs")
+        with Horizontal(classes="body"):
+            with Vertical(classes="grid"):
+                for name in MOTOR_OUTPUTS:
+                    with Vertical(classes="field"):
+                        yield Label(name)
+                        yield Input(placeholder="0", id=f"mot-{name}",
+                                    value="0", type="number")
+            with Vertical(classes="guide"):
+                yield Static("Scale", classes="guide-title")
+                for val, us, label in _MOTOR_GUIDE:
+                    yield Static(
+                        f"[#58a6ff]{val:>3}[/] → {us}\n[dim]  {label}[/]",
+                        classes="guide-row",
+                    )
+        with Horizontal(classes="actions"):
+            yield Button("Send", id="mot-send", variant="primary")
+            yield Button("Zero all", id="mot-zero")
+            yield Button("Neutral (127)", id="mot-neutral")
+            yield Static("", id="mot-ack", classes="ack")
+
+    def collect(self) -> dict[str, int]:
+        out: dict[str, int] = {}
+        for name in MOTOR_OUTPUTS:
+            raw = self.query_one(f"#mot-{name}", Input).value.strip()
+            try:
+                out[name] = max(0, min(255, int(float(raw)))) if raw else 0
+            except ValueError:
+                out[name] = 0
+        return out
+
+    def zero(self) -> None:
+        for name in MOTOR_OUTPUTS:
+            self.query_one(f"#mot-{name}", Input).value = "0"
+
+    def neutral(self) -> None:
+        for name in MOTOR_OUTPUTS:
+            self.query_one(f"#mot-{name}", Input).value = "127"
+
+    def watch_last_ack(self, ack: str) -> None:
+        self.query_one("#mot-ack", Static).update(ack)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Status bar
 # ─────────────────────────────────────────────────────────────────────────────
@@ -683,6 +787,8 @@ class AUVControlApp(App):
                     yield ManualCommandPanel(id="manual")
                 with TabPane("PID Gains", id="tab-pid"):
                     yield PIDTuningPanel(id="pid")
+                with TabPane("Motor Override", id="tab-motors"):
+                    yield MotorOverridePanel(id="motors")
         yield StatusBar(id="status")
         yield Footer()
 
@@ -736,6 +842,20 @@ class AUVControlApp(App):
         except Exception:
             ctrl = {n: {"enabled": False, "detected": False,
                         "running": False, "pid": None} for n in CONTROLLERS}
+
+        # self.hpm runs in this UI process, while the hardware_interface
+        # service (and the controller threads it reconciles) runs in a
+        # separate subprocess with its own HardwareProcessManager — so
+        # self.hpm never observes those threads directly. Treat an
+        # enabled+detected controller as running whenever the service is
+        # up, since that's when its reconcile loop will have started it.
+        hw_running = bool(svc.get("hardware_interface", {}).get("running"))
+        for name in CONTROLLERS:
+            info = ctrl.setdefault(name, {"enabled": False, "detected": False,
+                                           "running": False, "pid": None})
+            if hw_running and info.get("enabled") and info.get("detected"):
+                info["running"] = True
+
         self.query_one(ServicesPanel).service_state   = svc
         self.query_one(ControllersPanel).controller_state = ctrl
 
@@ -828,6 +948,12 @@ class AUVControlApp(App):
             self.query_one(ManualCommandPanel).zero()
         elif bid == "pid-update":
             self._send_pid_gains()
+        elif bid == "mot-send":
+            self._send_motor_override()
+        elif bid == "mot-zero":
+            self.query_one(MotorOverridePanel).zero()
+        elif bid == "mot-neutral":
+            self.query_one(MotorOverridePanel).neutral()
 
     # ── PID / manual send ────────────────────────────────────────────────
     def _send_pid_gains(self) -> None:
@@ -851,6 +977,18 @@ class AUVControlApp(App):
         except Exception as exc:
             panel.last_ack = f"error: {exc}"
             self.notify(f"send failed: {exc}", severity="error")
+
+    def _send_motor_override(self) -> None:
+        panel  = self.query_one(MotorOverridePanel)
+        fields = panel.collect()
+        try:
+            self.client.post("outputs", **fields)           # EXTERNAL: write
+            ts = time.strftime("%H:%M:%S")
+            panel.last_ack = f"sent · {ts}"
+            self.query_one(StatusBar).last_post = f"last cmd → outputs @ {ts}"
+        except Exception as exc:
+            panel.last_ack = f"error: {exc}"
+            self.notify(f"motor override failed: {exc}", severity="error")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

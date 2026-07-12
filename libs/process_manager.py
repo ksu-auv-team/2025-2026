@@ -5,10 +5,11 @@ from pathlib import Path
 from libs.config import get_env
 
 _DB_DIR = Path(__file__).parent / "db_manager"
+_LIBS_DIR = Path(__file__).parent
 _RECONCILE_INTERVAL: float = 5.0
 
 # Extend this list as high-level packages are implemented.
-_SERVICES: list[str] = ["db", "hardware_interface", "camera", "movement_package"]
+_SERVICES: list[str] = ["db", "hardware_interface", "camera", "movement"]
 
 
 def _run_db() -> None:
@@ -44,9 +45,12 @@ def _run_db() -> None:
         raise
 
 
-def _run_hardware_interface() -> None:
+def _run_hardware_interface(simulation: bool = False) -> None:
     """Start the hardware interface reconcile loop."""
     import logging
+    import sys
+
+    sys.path.insert(0, str(_LIBS_DIR))
 
     from libs.hardware_interface.process_manager import (
         HardwareProcessManager,
@@ -56,7 +60,7 @@ def _run_hardware_interface() -> None:
     setup_logging("hardware_interface")
     log = logging.getLogger(__name__)
 
-    pm = HardwareProcessManager()
+    pm = HardwareProcessManager(dry_run=simulation)
     while True:
         try:
             pm.reconcile()
@@ -86,6 +90,7 @@ _TARGETS: dict[str, object] = {
     "db": _run_db,
     "hardware_interface": _run_hardware_interface,
     "camera": _run_camera,
+    "movement": _run_movement_package,
 }
 
 
@@ -109,7 +114,7 @@ class ProcessManager:
         for name in list(self._processes):
             self.stop(name)
 
-    def start(self, name: str) -> None:
+    def start(self, name: str, simulation: bool = False) -> None:
         """Start a service by name. No-op if already running."""
         if name not in _TARGETS:
             raise ValueError(
@@ -120,8 +125,9 @@ class ProcessManager:
         if self.dry_run:
             print(f"[dry_run] start: {name}")
             return
+        kwargs = {"simulation": simulation} if name == "hardware_interface" else {}
         p = multiprocessing.Process(
-            target=_TARGETS[name], name=name, daemon=True,
+            target=_TARGETS[name], name=name, daemon=True, kwargs=kwargs,
         )
         p.start()
         self._processes[name] = p
