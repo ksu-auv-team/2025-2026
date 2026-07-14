@@ -21,10 +21,21 @@ def _disarmed() -> dict:
 
 # --- Helpers ---
 
-def remap(value: float, in_min=-1.0, in_max=1.0, out_min=0, out_max=255) -> int:
-    """Clamp then linearly map [-1, 1] → [0, 255]. 0.0 → 127."""
-    value = max(in_min, min(in_max, float(value)))
-    return int(round((value - in_min) / (in_max - in_min) * (out_max - out_min) + out_min))
+def remap(value: float, in_min: float = -1.0, in_max: float = 1.0,
+          out_min: float = 0, out_max: float = 255) -> int:
+    """
+    Clamp `value` to [in_min, in_max], then linearly map it to [out_min, out_max].
+
+    Example: remap(0.0) -> 127 (midpoint of default range)
+    """
+    # Clamp input to the valid range
+    clamped = max(in_min, min(in_max, float(value)))
+
+    # Normalize to 0-1, then scale to output range
+    normalized = (clamped - in_min) / (in_max - in_min)
+    scaled = normalized * (out_max - out_min) + out_min
+
+    return int(round(scaled))
 
 # --- Core functions ---
 

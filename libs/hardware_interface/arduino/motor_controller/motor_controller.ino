@@ -16,9 +16,9 @@
 #define PIN_MOTOR8   13
 
 // ── BlueRobotics Basic ESC PWM Range ─────────────────────────────────────────
-#define PWM_MIN         1350
-#define PWM_NEUTRAL     1500
-#define PWM_MAX         1650
+#define PWM_MIN         1200
+#define PWM_NEUTRAL     1512
+#define PWM_MAX         1800
 
 #define NUM_MOTORS      8
 #define REGISTER_THRUST 0x00
